@@ -375,9 +375,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <div class="fgrid">
       <div class="fg">
         <label>Platforma</label>
-        <select id="import-broker" onchange="clearImport()">
+        <select id="import-broker" onchange="clearImport();switchImportHint()">
+          <option value="topstepx">TopstepX (TopStep)</option>
           <option value="tradovate">Tradovate (Apex Trader Funding, Alpha Futures)</option>
-          <option value="topstepx" disabled>TopstepX / TopStep — brzy</option>
         </select>
       </div>
       <div class="fg">
@@ -388,10 +388,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
         </div>
       </div>
     </div>
-    <div class="import-hint">
-      <strong>Jak exportovat z Tradovate:</strong> Přihlás se na <code>trader.tradovate.com</code> →
-      klikni na <code>Accounts</code> → vyber účet → záložka <code>Trades</code> →
-      tlačítko <code>Download</code> vpravo dole → ulož CSV soubor
+    <div class="import-hint" id="import-hint-topstepx">
+      <strong>Jak exportovat z TopstepX:</strong> Přihlas se na <code>topstepx.com</code> →
+      záložka <code>Trades</code> → tlačítko <code>Export</code> vpravo dole →
+      vyber rozsah dat → ulož CSV soubor
+    </div>
+    <div class="import-hint" id="import-hint-tradovate" style="display:none">
+      <strong>Jak exportovat z Tradovate:</strong> Přihlas se na <code>trader.tradovate.com</code> →
+      klikni na ikonu <code>grafu/performance</code> vlevo → záložka <code>Performance</code> →
+      nastav rozsah dat → tlačítko <code>Export</code> (šipka dolů) → ulož CSV soubor
     </div>
   </div>
 
@@ -492,6 +497,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     </div>
     <div class="fsec" style="margin-bottom:12px">
       <div class="fgrid">
+        <div class="fg full"><label>Screenshot — TradingView URL nebo přímý odkaz na obrázek</label>
+          <input type="text" id="e-chart-url" placeholder="https://www.tradingview.com/x/mAhjIOdO/ nebo https://…/img.png" oninput="handleEditChartUrl()"/>
+          <div id="e-img-preview" style="margin-top:8px;display:none">
+            <img id="e-img-preview-src" src="" style="width:100%;max-height:180px;object-fit:contain;border-radius:var(--r);border:1px solid var(--border2);cursor:pointer" onclick="openLightbox(this.src)" alt="preview"/>
+          </div>
+        </div>
         <div class="fg full"><label>Důvod vstupu</label><textarea id="e-reason"></textarea></div>
         <div class="fg full"><label>Psychologie</label><textarea id="e-psych"></textarea></div>
         <div class="fg full"><label>Poučení</label><textarea id="e-lesson"></textarea></div>
@@ -680,12 +691,44 @@ function openEdit(id, e) {
   document.getElementById('e-dir').value=t.dir||'LONG';
   document.getElementById('e-quality').value=t.quality||'';
   document.getElementById('e-market').value=t.market||'';
+  // Načti chart URL — preferuj TradingView URL, fallback na img
+  const chartUrl = t.chartUrl || (t.img&&t.img.startsWith('http') ? t.img : '') || '';
+  document.getElementById('e-chart-url').value = chartUrl;
+  if(chartUrl) {
+    const imgUrl = normalizeImageUrl(chartUrl);
+    document.getElementById('e-img-preview-src').src = imgUrl;
+    document.getElementById('e-img-preview').style.display = 'block';
+  } else {
+    document.getElementById('e-img-preview').style.display = 'none';
+  }
   document.getElementById('edit-modal').classList.add('open');
+}
+
+function handleEditChartUrl() {
+  const url = document.getElementById('e-chart-url').value.trim();
+  const prev = document.getElementById('e-img-preview');
+  if(!url) { prev.style.display='none'; return; }
+  const imgUrl = normalizeImageUrl(url);
+  document.getElementById('e-img-preview-src').src = imgUrl;
+  prev.style.display = 'block';
+}
+
+// Převede TradingView page URL na přímou URL obrázku
+function normalizeImageUrl(url) {
+  if(!url) return '';
+  const tvM = url.match(/tradingview\.com\/x\/([a-zA-Z0-9]+)/);
+  if(tvM) {
+    const id = tvM[1];
+    return `https://s3.tradingview.com/snapshots/${id[0].toLowerCase()}/${id}.png`;
+  }
+  return url;
 }
 function closeEditModal() { document.getElementById('edit-modal').classList.remove('open'); editingId=null; }
 async function saveEdit() {
   if(!editingId) return;
   const t = trades.find(x=>x._id===editingId); if(!t) return;
+  const rawChartUrl = document.getElementById('e-chart-url').value.trim();
+  const chartImg = rawChartUrl ? normalizeImageUrl(rawChartUrl) : (t.img||'');
   const updated = {...t,
     symbol:document.getElementById('e-symbol').value.toUpperCase(),
     date:document.getElementById('e-date').value,
@@ -700,6 +743,8 @@ async function saveEdit() {
     lesson:document.getElementById('e-lesson').value,
     quality:document.getElementById('e-quality').value,
     market:document.getElementById('e-market').value,
+    chartUrl: rawChartUrl,
+    img: chartImg,
   };
   try {
     await updateTrade(editingId, updated);
@@ -746,7 +791,79 @@ function parseTradovateDate(str) {
   return `${m[3]}-${m[1]}-${m[2]}T${m[4]}`;
 }
 
-// Hlavní parser pro Tradovate "Trades" export
+// ── TRADOVATE PERFORMANCE CSV PARSER ──
+// Formát: symbol,_priceFormat,_priceFormatType,_tickSize,buyFillId,sellFillId,
+//         qty,buyPrice,sellPrice,pnl,boughtTimestamp,soldTimestamp,duration
+function parseTradovatePerformanceCSV(text) {
+  const lines = text.trim().split('\n');
+  if(lines.length < 2) return [];
+
+  const headerLine = lines[0].replace(/^\uFEFF/, '');
+  const headers = headerLine.split(',').map(h => h.trim().replace(/"/g,''));
+  const idx = {};
+  headers.forEach((h, i) => idx[h] = i);
+
+  const required = ['symbol','buyPrice','sellPrice','pnl','boughtTimestamp','soldTimestamp','qty'];
+  const missing = required.filter(k => idx[k] === undefined);
+  if(missing.length) {
+    toast('CSV neobsahuje sloupce: '+missing.join(', '),'err');
+    return [];
+  }
+
+  const result = [];
+  for(let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if(!line) continue;
+    const cols = line.split(',').map(c => c.trim().replace(/"/g,''));
+    const get = key => (cols[idx[key]] || '').trim();
+
+    const contractName   = get('symbol');
+    const buyPrice       = parseFloat(get('buyPrice'));
+    const sellPrice      = parseFloat(get('sellPrice'));
+    const pnlRaw         = get('pnl').replace('$','').replace(',','').trim();
+    const pnl            = parseFloat(pnlRaw);
+    const qty            = parseInt(get('qty')) || 1;
+    const boughtTs       = get('boughtTimestamp');
+    const soldTs         = get('soldTimestamp');
+    const duration       = get('duration');
+    const buyFillId      = get('buyFillId');
+    const sellFillId     = get('sellFillId');
+
+    if(!contractName || isNaN(buyPrice) || isNaN(sellPrice)) continue;
+
+    // Určení směru: kdo byl dřív (buy nebo sell) = vstup
+    const buyDate  = new Date(boughtTs);
+    const sellDate = new Date(soldTs);
+    const isLong   = buyDate <= sellDate;
+
+    const dir      = isLong ? 'LONG' : 'SHORT';
+    const entry    = isLong ? buyPrice  : sellPrice;
+    const exit     = isLong ? sellPrice : buyPrice;
+    const entryTs  = isLong ? boughtTs  : soldTs;
+
+    const symbol  = parseContractSymbol(contractName);
+    const dateStr = parseTradovateDate(entryTs);
+
+    result.push({
+      symbol,
+      contractName,
+      date: dateStr,
+      dir,
+      entry,
+      exit,
+      size: qty,
+      importedPnl: pnl,
+      duration,
+      importId: 'tv-' + buyFillId + '-' + sellFillId,
+      source: 'tradovate',
+      strategy: [],
+      ts: new Date().toISOString()
+    });
+  }
+  return result;
+}
+
+// Hlavní parser pro TopstepX "Trades" export
 function parseTradovateCSV(text) {
   const lines = text.trim().split('\n');
   if(lines.length < 2) return [];
@@ -827,20 +944,28 @@ function handleImportFile(inp) {
   reader.onload = e => {
     const broker = document.getElementById('import-broker').value;
     let parsed = [];
-    if(broker === 'tradovate') {
-      parsed = parseTradovateCSV(e.target.result);
+    if(broker === 'topstepx') {
+      parsed = parseTradovateCSV(e.target.result); // TopstepX parser
+    } else if(broker === 'tradovate') {
+      parsed = parseTradovatePerformanceCSV(e.target.result); // Tradovate parser
     }
     if(!parsed.length) {
-      document.getElementById('import-drop-label').textContent = '⚠️ Žádné obchody nenalezeny — zkontroluj formát souboru';
+      document.getElementById('import-drop-label').textContent = '⚠️ Žádné obchody nenalezeny — zkontroluj formát a broker výběr';
       return;
     }
     parsed = markDuplicates(parsed);
     importedTrades = parsed;
     renderImportPreview(parsed);
-    document.getElementById('import-drop-label').textContent = `✓ ${file.name}`;
+    document.getElementById('import-drop-label').textContent = `✓ ${file.name} (${parsed.length} obchodů)`;
   };
   reader.onerror = () => toast('Chyba čtení souboru','err');
   reader.readAsText(file, 'utf-8');
+}
+
+function switchImportHint() {
+  const broker = document.getElementById('import-broker').value;
+  document.getElementById('import-hint-topstepx').style.display = broker === 'topstepx' ? 'block' : 'none';
+  document.getElementById('import-hint-tradovate').style.display = broker === 'tradovate' ? 'block' : 'none';
 }
 
 function renderImportPreview(trades) {
@@ -997,7 +1122,7 @@ function renderDashboard() {
         <td style="font-family:var(--mono);font-size:12px;color:var(--text2)">${t.entry}→${t.exit}</td>
         <td style="font-family:var(--mono);font-weight:700;color:${pnl>0?'var(--green)':pnl<0?'var(--red)':'var(--purple)'}">${fmtPnl(pnl)}</td>
         <td><span class="badge ${res}">${res==='win'?'WIN':res==='loss'?'LOSS':'BE'}</span></td>
-        <td>${imgSrc?`<img class="thumb" src="${imgSrc}" onclick="openLightbox('${imgSrc}')" alt="chart"/>`:'—'}</td>
+        <td>${imgSrc?`<img class="thumb" src="${imgSrc}" onclick="openLightbox(this.src)" alt="chart"/>`:'—'}</td>
         <td style="color:var(--text3);font-size:11px">${(t.strategy||[]).slice(0,2).join(', ')||'—'}</td>
         <td style="display:flex;gap:4px;align-items:center">
           <button class="edit-btn" onclick="openEdit(${t._id},event)">edit</button>
@@ -1026,7 +1151,8 @@ function renderJournal() {
   el.innerHTML=filtered.map((t,i)=>{
     const pnl=calcPnl(t);
     const res=getResult(t);
-    const imgSrc=t.img&&(t.img.startsWith('data:')||t.img.startsWith('http'))?t.img:'';
+    const rawImg = t.img || t.chartUrl || '';
+    const imgSrc = rawImg && (rawImg.startsWith('data:') || rawImg.startsWith('http')) ? rawImg : '';
     return `<div class="jcard">
       <div class="jcard-header" onclick="toggleDetail('jd-${i}')">
         <span style="font-family:var(--display);font-weight:700;font-size:16px">${t.symbol}</span>
@@ -1049,7 +1175,13 @@ function renderJournal() {
         ${t.lesson?`<div class="jfield full"><label>Poučení</label><p>${t.lesson}</p></div>`:''}
         ${(t.moodPre||t.moodPost)?`<div class="jfield"><label>Nálada</label><p>${t.moodPre||'—'} → ${t.moodPost||'—'}</p></div>`:''}
         ${t.market?`<div class="jfield"><label>Podmínky</label><p>${t.market}</p></div>`:''}
-        ${imgSrc?`<div class="jcard-img"><img src="${imgSrc}" alt="chart screenshot" onclick="openLightbox('${imgSrc}')"/></div>`:''}
+        ${imgSrc?`<div class="jcard-img"><img src="${imgSrc}" alt="chart screenshot" onclick="openLightbox(this.src)"/></div>`:`
+        <div class="jcard-img" style="grid-column:1/-1;margin-top:8px">
+          <div style="border:1px dashed var(--border2);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;justify-content:space-between;background:var(--bg3)">
+            <span style="font-size:12px;color:var(--text3)">Žádný screenshot — přidej přes tlačítko edit</span>
+            <button class="btn btn-ghost btn-sm" onclick="openEdit(${t._id},event)" style="font-size:11px">+ Přidat screenshot</button>
+          </div>
+        </div>`}
       </div>
     </div>`;
   }).join('');
