@@ -214,9 +214,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
 .dup-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);background:var(--adim);color:var(--amber);border:1px solid rgba(255,176,48,.2);margin-left:6px;}
 /* ── CALENDAR ── */
 .cal-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px;}
-.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);}
+.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr) 90px;border-bottom:1px solid var(--border);}
 .cal-head-row span{padding:10px 6px;text-align:center;font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
-.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr) 90px;}
 .cal-cell{min-height:90px;padding:8px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative;overflow:hidden;}
 .cal-cell:nth-child(7n){border-right:none;}
 .cal-cell:hover{background:rgba(255,255,255,.03);}
@@ -234,9 +234,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
 .cal-cnt{font-size:10px;color:var(--text3);font-family:var(--mono);}
 .cal-strats{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px;}
 .cal-strat{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);background:var(--bg5);color:var(--text3);}
-.cal-month-nav{display:flex;align-items:center;gap:12px;}
-.cal-month-title{font-family:var(--display);font-size:16px;font-weight:700;min-width:160px;text-align:center;}
+.cal-month-nav{display:flex;align-items:center;gap:10px;}
+.cal-month-title{font-family:var(--display);font-size:16px;font-weight:700;min-width:150px;text-align:center;}
 .cal-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+.cal-week-sum{background:var(--bg3);border-left:1px solid var(--border2);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;}
+.cal-week-sum .wlbl{font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;}
+.cal-week-sum .wpnl{font-family:var(--display);font-size:13px;font-weight:700;}
+.cal-week-sum .wpnl.pos{color:var(--green);}
+.cal-week-sum .wpnl.neg{color:var(--red);}
+.cal-week-sum .wcnt{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
 .cal-sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
 .cal-sum-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:5px;}
 .cal-sum-val{font-family:var(--display);font-size:18px;font-weight:700;}
@@ -535,18 +541,20 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
 <!-- ══ CALENDAR ══ -->
 <div id="tab-calendar" class="section">
   <div class="ph">
-    <div><div class="ph-title">Kalendář</div><div class="ph-sub">P&L přehled po dnech</div></div>
-    <div class="cal-month-nav">
-      <button class="btn btn-ghost btn-sm" onclick="calPrevMonth()">←</button>
-      <div class="cal-month-title" id="cal-month-title"></div>
-      <button class="btn btn-ghost btn-sm" onclick="calNextMonth()">→</button>
-      <button class="btn btn-ghost btn-sm" onclick="calGoToday()">Dnes</button>
+    <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
+      <div><div class="ph-title">Kalendář</div><div class="ph-sub">P&L přehled po dnech</div></div>
+      <div class="cal-month-nav">
+        <button class="btn btn-ghost btn-sm" onclick="calPrevMonth()">←</button>
+        <div class="cal-month-title" id="cal-month-title"></div>
+        <button class="btn btn-ghost btn-sm" onclick="calNextMonth()">→</button>
+        <button class="btn btn-ghost btn-sm" onclick="calGoToday()">Dnes</button>
+      </div>
     </div>
   </div>
   <div class="cal-summary" id="cal-summary"></div>
   <div class="cal-wrap">
     <div class="cal-head-row">
-      <span>Po</span><span>Út</span><span>St</span><span>Čt</span><span>Pá</span><span>So</span><span>Ne</span>
+      <span>Po</span><span>Út</span><span>St</span><span>Čt</span><span>Pá</span><span>So</span><span>Ne</span><span>Týden</span>
     </div>
     <div class="cal-grid" id="cal-grid"></div>
   </div>
@@ -1440,63 +1448,98 @@ function renderCalendar() {
   const byDay = groupByDay();
   const today = new Date().toISOString().slice(0,10);
 
-  // Měsíční souhrn
-  const monthKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  // ── Měsíční souhrn ──
+  const monthKey    = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
   const monthTrades = trades.filter(t => (t.date||t.ts||'').startsWith(monthKey));
   const monthPnl    = monthTrades.reduce((s,t)=>s+calcPnl(t),0);
   const monthWins   = monthTrades.filter(t=>calcPnl(t)>0);
-  const monthLoss   = monthTrades.filter(t=>calcPnl(t)<0);
   const tradingDays = new Set(monthTrades.map(t=>(t.date||t.ts||'').slice(0,10))).size;
-  const profDays    = Object.entries(byDay).filter(([d,ts])=>d.startsWith(monthKey)&&ts.reduce((s,t)=>s+calcPnl(t),0)>0).length;
+  const profDays    = [...new Set(monthTrades.map(t=>(t.date||t.ts||'').slice(0,10)))]
+    .filter(d=>byDay[d]&&byDay[d].reduce((s,t)=>s+calcPnl(t),0)>0).length;
+  const wr = monthTrades.length ? (monthWins.length/monthTrades.length*100).toFixed(0)+'%' : '—';
 
   document.getElementById('cal-summary').innerHTML = `
-    <div class="cal-sum-card"><div class="cal-sum-label">Měs. P&L</div><div class="cal-sum-val" style="color:${monthPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(monthPnl)}</div></div>
-    <div class="cal-sum-card"><div class="cal-sum-label">Obchodů</div><div class="cal-sum-val">${monthTrades.length}</div></div>
-    <div class="cal-sum-card"><div class="cal-sum-label">Win rate</div><div class="cal-sum-val">${monthTrades.length?(monthWins.length/monthTrades.length*100).toFixed(0)+'%':'—'}</div></div>
-    <div class="cal-sum-card"><div class="cal-sum-label">Obch. dny</div><div class="cal-sum-val">${tradingDays}</div></div>
-    <div class="cal-sum-card"><div class="cal-sum-label">Profit. dny</div><div class="cal-sum-val" style="color:var(--green)">${profDays}</div></div>
+    <div class="cal-sum-card">
+      <div class="cal-sum-label">Měsíční P&L</div>
+      <div class="cal-sum-val" style="color:${monthPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(monthPnl)}</div>
+    </div>
+    <div class="cal-sum-card">
+      <div class="cal-sum-label">Obchodů</div>
+      <div class="cal-sum-val">${monthTrades.length}</div>
+    </div>
+    <div class="cal-sum-card">
+      <div class="cal-sum-label">Win rate</div>
+      <div class="cal-sum-val">${wr}</div>
+    </div>
+    <div class="cal-sum-card">
+      <div class="cal-sum-label">Obch. dny</div>
+      <div class="cal-sum-val">${tradingDays}</div>
+    </div>
+    <div class="cal-sum-card">
+      <div class="cal-sum-label">Profit. dny</div>
+      <div class="cal-sum-val" style="color:var(--green)">${profDays}</div>
+    </div>
   `;
 
-  // Kalendářní grid
+  // ── Sestavení buněk ──
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay  = new Date(calYear, calMonth+1, 0);
-  // Pondělí = 0 (evropský standard)
-  let startDow = (firstDay.getDay()+6)%7; // 0=Po..6=Ne
-  const cells = [];
-  // Prázdné buňky před 1. dnem
-  for(let i=0; i<startDow; i++) cells.push({day:null, otherMonth:true});
-  // Dny měsíce
+  const startDow = (firstDay.getDay()+6)%7; // Po=0 … Ne=6
+
+  const dayCells = [];
+  for(let i=0; i<startDow; i++) dayCells.push({empty:true});
   for(let d=1; d<=lastDay.getDate(); d++) {
-    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dateStr   = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const dayTrades = byDay[dateStr] || [];
     const dayPnl    = dayTrades.reduce((s,t)=>s+calcPnl(t),0);
-    const allStrats = [...new Set(dayTrades.flatMap(t=>t.strategy||[]))].slice(0,3);
-    cells.push({ day:d, dateStr, dayTrades, dayPnl, allStrats,
-      isToday: dateStr===today,
+    const allStrats = [...new Set(dayTrades.flatMap(t=>t.strategy||[]))].slice(0,2);
+    dayCells.push({ d, dateStr, dayTrades, dayPnl, allStrats,
+      isToday:    dateStr===today,
       isSelected: dateStr===calSelectedDay });
   }
   // Doplnit na násobek 7
-  while(cells.length % 7 !== 0) cells.push({day:null, otherMonth:true});
+  while(dayCells.length % 7 !== 0) dayCells.push({empty:true});
 
-  document.getElementById('cal-grid').innerHTML = cells.map(c => {
-    if(c.otherMonth) return `<div class="cal-cell other-month"></div>`;
-    const hasTrades = c.dayTrades.length > 0;
-    const cls = [
-      'cal-cell',
-      hasTrades ? 'has-trades' : '',
-      hasTrades ? (c.dayPnl>=0 ? 'profitable' : 'losing') : '',
-      c.isToday ? 'today' : '',
-      c.isSelected ? 'selected' : ''
-    ].filter(Boolean).join(' ');
-    return `<div class="${cls}" onclick="calSelectDay('${c.dateStr}')">
-      <div class="cal-num">${c.day}</div>
-      ${hasTrades ? `
-        <div class="cal-pnl ${c.dayPnl>=0?'pos':'neg'}">${fmtPnl(c.dayPnl)}</div>
-        <div class="cal-cnt">${c.dayTrades.length} obchod${c.dayTrades.length>4?'ů':c.dayTrades.length>1?'y':''}</div>
-        ${c.allStrats.length ? `<div class="cal-strats">${c.allStrats.map(s=>`<span class="cal-strat">${s}</span>`).join('')}</div>` : ''}
-      ` : ''}
-    </div>`;
-  }).join('');
+  // ── Sestavení HTML s weekly sum po každých 7 buňkách ──
+  let html = '';
+  for(let i=0; i<dayCells.length; i++) {
+    const c = dayCells[i];
+    if(c.empty) {
+      html += `<div class="cal-cell other-month"></div>`;
+    } else {
+      const hasTrades = c.dayTrades.length > 0;
+      const cls = ['cal-cell',
+        hasTrades?'has-trades':'',
+        hasTrades?(c.dayPnl>=0?'profitable':'losing'):'',
+        c.isToday?'today':'',
+        c.isSelected?'selected':''
+      ].filter(Boolean).join(' ');
+      html += `<div class="${cls}" onclick="calSelectDay('${c.dateStr}')">
+        <div class="cal-num">${c.d}</div>
+        ${hasTrades?`
+          <div class="cal-pnl ${c.dayPnl>=0?'pos':'neg'}">${fmtPnl(c.dayPnl)}</div>
+          <div class="cal-cnt">${c.dayTrades.length} obchod${c.dayTrades.length>4?'ů':c.dayTrades.length>1?'y':''}</div>
+          ${c.allStrats.length?`<div class="cal-strats">${c.allStrats.map(s=>`<span class="cal-strat">${s}</span>`).join('')}</div>`:''}
+        `:''}
+      </div>`;
+    }
+    // Weekly sum po každých 7 buňkách
+    if((i+1) % 7 === 0) {
+      const weekCells = dayCells.slice(i-6, i+1).filter(c=>!c.empty);
+      const weekPnl   = weekCells.reduce((s,c)=>s+c.dayPnl,0);
+      const weekCount = weekCells.reduce((s,c)=>s+c.dayTrades.length,0);
+      if(weekCount > 0) {
+        html += `<div class="cal-week-sum">
+          <div class="wlbl">Týden</div>
+          <div class="wpnl ${weekPnl>=0?'pos':'neg'}">${fmtPnl(weekPnl)}</div>
+          <div class="wcnt">${weekCount} obch.</div>
+        </div>`;
+      } else {
+        html += `<div class="cal-week-sum"></div>`;
+      }
+    }
+  }
+  document.getElementById('cal-grid').innerHTML = html;
 
   // Zobraz panel vybraného dne
   if(calSelectedDay) renderCalDayPanel(calSelectedDay, byDay[calSelectedDay]||[]);
