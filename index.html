@@ -212,6 +212,57 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
 .import-stat .lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:4px;}
 .import-stat .val{font-family:var(--display);font-size:20px;font-weight:700;}
 .dup-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);background:var(--adim);color:var(--amber);border:1px solid rgba(255,176,48,.2);margin-left:6px;}
+/* ── CALENDAR ── */
+.cal-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px;}
+.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr);border-bottom:1px solid var(--border);}
+.cal-head-row span{padding:10px 6px;text-align:center;font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);}
+.cal-cell{min-height:90px;padding:8px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative;overflow:hidden;}
+.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell:hover{background:rgba(255,255,255,.03);}
+.cal-cell.other-month{opacity:.25;pointer-events:none;}
+.cal-cell.has-trades.profitable{background:rgba(5,245,147,.08);}
+.cal-cell.has-trades.profitable:hover{background:rgba(5,245,147,.14);}
+.cal-cell.has-trades.losing{background:rgba(255,68,102,.08);}
+.cal-cell.has-trades.losing:hover{background:rgba(255,68,102,.14);}
+.cal-cell.selected{outline:2px solid var(--accent);outline-offset:-2px;z-index:1;}
+.cal-num{font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:5px;display:inline-block;}
+.cal-cell.today .cal-num{background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-weight:700;}
+.cal-pnl{font-family:var(--display);font-size:14px;font-weight:700;line-height:1.2;margin-bottom:2px;}
+.cal-pnl.pos{color:var(--green);}
+.cal-pnl.neg{color:var(--red);}
+.cal-cnt{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.cal-strats{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px;}
+.cal-strat{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);background:var(--bg5);color:var(--text3);}
+.cal-month-nav{display:flex;align-items:center;gap:12px;}
+.cal-month-title{font-family:var(--display);font-size:16px;font-weight:700;min-width:160px;text-align:center;}
+.cal-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
+.cal-sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
+.cal-sum-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:5px;}
+.cal-sum-val{font-family:var(--display);font-size:18px;font-weight:700;}
+.cal-day-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:16px;margin-top:12px;}
+.cal-day-title{font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);margin-bottom:12px;}
+/* ── TRADE CARDS ── */
+.journal-toggle{display:flex;gap:6px;margin-bottom:16px;}
+.view-btn{padding:6px 14px;border-radius:6px;font-size:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text3);cursor:pointer;transition:all .15s;font-family:var(--mono);}
+.view-btn.active{background:var(--gdim);border-color:rgba(5,245,147,.35);color:var(--green);}
+.cards-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.trade-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;transition:border-color .15s,transform .12s;cursor:pointer;}
+.trade-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.trade-card-img{height:150px;background:var(--bg4);position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;}
+.trade-card-img img{width:100%;height:100%;object-fit:cover;transition:transform .2s;}
+.trade-card:hover .trade-card-img img{transform:scale(1.03);}
+.trade-card-no-img{font-size:28px;opacity:.18;}
+.trade-card-pnl-overlay{position:absolute;top:8px;right:8px;font-family:var(--display);font-size:14px;font-weight:700;padding:3px 10px;border-radius:6px;backdrop-filter:blur(6px);}
+.trade-card-pnl-overlay.pos{background:rgba(5,245,147,.25);color:var(--green);border:1px solid rgba(5,245,147,.3);}
+.trade-card-pnl-overlay.neg{background:rgba(255,68,102,.25);color:var(--red);border:1px solid rgba(255,68,102,.3);}
+.trade-card-pnl-overlay.be{background:rgba(160,112,255,.25);color:var(--purple);border:1px solid rgba(160,112,255,.3);}
+.trade-card-body{padding:12px 14px;}
+.trade-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.trade-card-symbol{font-family:var(--display);font-size:16px;font-weight:700;}
+.trade-card-date{font-size:11px;color:var(--text3);font-family:var(--mono);}
+.trade-card-row{display:flex;align-items:center;gap:6px;margin-top:5px;flex-wrap:wrap;}
+.trade-card-prices{font-family:var(--mono);font-size:11px;color:var(--text3);}
 @media(max-width:900px){
   .sidebar{width:58px;}
   .main{margin-left:58px;padding:16px;}
@@ -235,6 +286,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <div class="nav-item" onclick="showTab('new',this)"><span class="nav-icon">＋</span><span class="nav-label">Nový obchod</span></div>
     <div class="nav-item" onclick="showTab('import',this)"><span class="nav-icon">↑</span><span class="nav-label">Import CSV</span></div>
     <div class="nav-item" onclick="showTab('journal',this)"><span class="nav-icon">≡</span><span class="nav-label">Journal</span></div>
+    <div class="nav-item" onclick="showTab('calendar',this)"><span class="nav-icon">□</span><span class="nav-label">Kalendář</span></div>
     <div class="nav-item" onclick="showTab('stats',this)"><span class="nav-icon">▲</span><span class="nav-label">Statistiky</span></div>
     <div class="nav-item" onclick="showTab('psychology',this)"><span class="nav-icon">◎</span><span class="nav-label">Psychologie</span></div>
   </div>
@@ -432,7 +484,13 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
 </div>
 <!-- ══ JOURNAL ══ -->
 <div id="tab-journal" class="section">
-  <div class="ph"><div><div class="ph-title">Journal</div><div class="ph-sub">Klikni na obchod pro detail</div></div></div>
+  <div class="ph">
+    <div><div class="ph-title">Journal</div><div class="ph-sub" id="journal-sub">Klikni na obchod pro detail</div></div>
+    <div class="journal-toggle">
+      <button class="view-btn active" id="btn-list-view" onclick="setJournalView('list')">≡ Seznam</button>
+      <button class="view-btn" id="btn-card-view" onclick="setJournalView('cards')">⊞ Kartičky</button>
+    </div>
+  </div>
   <div class="fbar">
     <select id="filter-dir" onchange="renderJournal()"><option value="">Všechny směry</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select>
     <select id="filter-res" onchange="renderJournal()"><option value="">Vše</option><option value="win">Výhry</option><option value="loss">Prohry</option><option value="be">Break even</option></select>
@@ -473,6 +531,26 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
   </div>
 </div>
 </main>
+</div>
+<!-- ══ CALENDAR ══ -->
+<div id="tab-calendar" class="section">
+  <div class="ph">
+    <div><div class="ph-title">Kalendář</div><div class="ph-sub">P&L přehled po dnech</div></div>
+    <div class="cal-month-nav">
+      <button class="btn btn-ghost btn-sm" onclick="calPrevMonth()">←</button>
+      <div class="cal-month-title" id="cal-month-title"></div>
+      <button class="btn btn-ghost btn-sm" onclick="calNextMonth()">→</button>
+      <button class="btn btn-ghost btn-sm" onclick="calGoToday()">Dnes</button>
+    </div>
+  </div>
+  <div class="cal-summary" id="cal-summary"></div>
+  <div class="cal-wrap">
+    <div class="cal-head-row">
+      <span>Po</span><span>Út</span><span>St</span><span>Čt</span><span>Pá</span><span>So</span><span>Ne</span>
+    </div>
+    <div class="cal-grid" id="cal-grid"></div>
+  </div>
+  <div id="cal-day-panel"></div>
 </div>
 <!-- ══ LIGHTBOX ══ -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
@@ -560,6 +638,7 @@ function showTab(t, el) {
   if(el) el.classList.add('active');
   if(t==='dashboard') renderDashboard();
   if(t==='journal') renderJournal();
+  if(t==='calendar') renderCalendar();
   if(t==='stats') renderStats();
   if(t==='psychology') renderPsych();
 }
@@ -1148,6 +1227,7 @@ function renderJournal() {
   });
   const el=document.getElementById('journal-list');
   if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">≡</div><p>Žádné obchody</p></div>';return;}
+  if(journalView==='cards'){renderJournalCards(filtered);return;}
   el.innerHTML=filtered.map((t,i)=>{
     const pnl=calcPnl(t);
     const res=getResult(t);
@@ -1277,6 +1357,202 @@ async function saveDailyJournal() {
     localStorage.setItem('tj_daily',JSON.stringify(entries));
     toast('Deník uložen lokálně');
   }
+}
+
+// ══════════════════════════════════════════
+// ── JOURNAL CARDS VIEW ──
+// ══════════════════════════════════════════
+let journalView = 'list'; // 'list' | 'cards'
+
+function setJournalView(v) {
+  journalView = v;
+  document.getElementById('btn-list-view').classList.toggle('active', v==='list');
+  document.getElementById('btn-card-view').classList.toggle('active', v==='cards');
+  document.getElementById('journal-sub').textContent = v==='list' ? 'Klikni na obchod pro detail' : 'Přehled obchodů s grafy';
+  renderJournal();
+}
+
+function renderJournalCards(filtered) {
+  const el = document.getElementById('journal-list');
+  if(!filtered.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">⊞</div><p>Žádné obchody</p></div>';
+    return;
+  }
+  el.innerHTML = `<div class="cards-grid">${filtered.map(t => {
+    const pnl = calcPnl(t);
+    const res = getResult(t);
+    const rawImg = t.img || t.chartUrl || '';
+    const imgSrc = rawImg && (rawImg.startsWith('data:') || rawImg.startsWith('http')) ? rawImg : '';
+    const pnlClass = pnl > 0 ? 'pos' : pnl < 0 ? 'neg' : 'be';
+    const strats = (t.strategy||[]).slice(0,2);
+    return `<div class="trade-card" onclick="openEdit(${t._id},event)">
+      <div class="trade-card-img">
+        ${imgSrc
+          ? `<img src="${imgSrc}" alt="chart" onclick="event.stopPropagation();openLightbox(this.src)"/>`
+          : `<div class="trade-card-no-img">📈</div>`}
+        <div class="trade-card-pnl-overlay ${pnlClass}">${fmtPnl(pnl)}</div>
+      </div>
+      <div class="trade-card-body">
+        <div class="trade-card-top">
+          <span class="trade-card-symbol">${t.symbol}</span>
+          <span class="trade-card-date">${(t.date||t.ts||'').slice(0,10)}</span>
+        </div>
+        <div class="trade-card-row">
+          <span class="badge ${t.dir==='LONG'?'long':'short'}">${t.dir}</span>
+          <span class="badge ${res}">${res==='win'?'WIN':res==='loss'?'LOSS':'BE'}</span>
+          ${t.quality ? `<span style="font-size:10px;color:var(--text3);background:var(--bg5);padding:2px 7px;border-radius:4px;font-family:var(--mono)">${t.quality}</span>` : ''}
+          ${strats.map(s=>`<span class="tag" style="cursor:default;font-size:9px;padding:2px 7px">${s}</span>`).join('')}
+        </div>
+        <div class="trade-card-prices" style="margin-top:6px">${t.entry} → ${t.exit} · ${t.size||1}×${t.duration?` · ${t.duration}`:''}</div>
+        ${t.reason ? `<div style="font-size:11px;color:var(--text3);margin-top:5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${t.reason}</div>` : ''}
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+// ══════════════════════════════════════════
+// ── CALENDAR ──
+// ══════════════════════════════════════════
+let calYear  = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+let calSelectedDay = null;
+
+const CS_MONTHS = ['Leden','Únor','Březen','Duben','Květen','Červen','Červenec','Srpen','Září','Říjen','Listopad','Prosinec'];
+
+function calPrevMonth() { calMonth--; if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNextMonth() { calMonth++; if(calMonth>11){calMonth=0;calYear++;} renderCalendar(); }
+function calGoToday()   { calYear=new Date().getFullYear(); calMonth=new Date().getMonth(); calSelectedDay=null; renderCalendar(); }
+
+// Seskupí obchody po dnech → { "2026-04-07": [trade,...], ... }
+function groupByDay() {
+  const map = {};
+  trades.forEach(t => {
+    const d = (t.date||t.ts||'').slice(0,10);
+    if(!d) return;
+    if(!map[d]) map[d] = [];
+    map[d].push(t);
+  });
+  return map;
+}
+
+function renderCalendar() {
+  document.getElementById('cal-month-title').textContent = `${CS_MONTHS[calMonth]} ${calYear}`;
+  const byDay = groupByDay();
+  const today = new Date().toISOString().slice(0,10);
+
+  // Měsíční souhrn
+  const monthKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  const monthTrades = trades.filter(t => (t.date||t.ts||'').startsWith(monthKey));
+  const monthPnl    = monthTrades.reduce((s,t)=>s+calcPnl(t),0);
+  const monthWins   = monthTrades.filter(t=>calcPnl(t)>0);
+  const monthLoss   = monthTrades.filter(t=>calcPnl(t)<0);
+  const tradingDays = new Set(monthTrades.map(t=>(t.date||t.ts||'').slice(0,10))).size;
+  const profDays    = Object.entries(byDay).filter(([d,ts])=>d.startsWith(monthKey)&&ts.reduce((s,t)=>s+calcPnl(t),0)>0).length;
+
+  document.getElementById('cal-summary').innerHTML = `
+    <div class="cal-sum-card"><div class="cal-sum-label">Měs. P&L</div><div class="cal-sum-val" style="color:${monthPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(monthPnl)}</div></div>
+    <div class="cal-sum-card"><div class="cal-sum-label">Obchodů</div><div class="cal-sum-val">${monthTrades.length}</div></div>
+    <div class="cal-sum-card"><div class="cal-sum-label">Win rate</div><div class="cal-sum-val">${monthTrades.length?(monthWins.length/monthTrades.length*100).toFixed(0)+'%':'—'}</div></div>
+    <div class="cal-sum-card"><div class="cal-sum-label">Obch. dny</div><div class="cal-sum-val">${tradingDays}</div></div>
+    <div class="cal-sum-card"><div class="cal-sum-label">Profit. dny</div><div class="cal-sum-val" style="color:var(--green)">${profDays}</div></div>
+  `;
+
+  // Kalendářní grid
+  const firstDay = new Date(calYear, calMonth, 1);
+  const lastDay  = new Date(calYear, calMonth+1, 0);
+  // Pondělí = 0 (evropský standard)
+  let startDow = (firstDay.getDay()+6)%7; // 0=Po..6=Ne
+  const cells = [];
+  // Prázdné buňky před 1. dnem
+  for(let i=0; i<startDow; i++) cells.push({day:null, otherMonth:true});
+  // Dny měsíce
+  for(let d=1; d<=lastDay.getDate(); d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dayTrades = byDay[dateStr] || [];
+    const dayPnl    = dayTrades.reduce((s,t)=>s+calcPnl(t),0);
+    const allStrats = [...new Set(dayTrades.flatMap(t=>t.strategy||[]))].slice(0,3);
+    cells.push({ day:d, dateStr, dayTrades, dayPnl, allStrats,
+      isToday: dateStr===today,
+      isSelected: dateStr===calSelectedDay });
+  }
+  // Doplnit na násobek 7
+  while(cells.length % 7 !== 0) cells.push({day:null, otherMonth:true});
+
+  document.getElementById('cal-grid').innerHTML = cells.map(c => {
+    if(c.otherMonth) return `<div class="cal-cell other-month"></div>`;
+    const hasTrades = c.dayTrades.length > 0;
+    const cls = [
+      'cal-cell',
+      hasTrades ? 'has-trades' : '',
+      hasTrades ? (c.dayPnl>=0 ? 'profitable' : 'losing') : '',
+      c.isToday ? 'today' : '',
+      c.isSelected ? 'selected' : ''
+    ].filter(Boolean).join(' ');
+    return `<div class="${cls}" onclick="calSelectDay('${c.dateStr}')">
+      <div class="cal-num">${c.day}</div>
+      ${hasTrades ? `
+        <div class="cal-pnl ${c.dayPnl>=0?'pos':'neg'}">${fmtPnl(c.dayPnl)}</div>
+        <div class="cal-cnt">${c.dayTrades.length} obchod${c.dayTrades.length>4?'ů':c.dayTrades.length>1?'y':''}</div>
+        ${c.allStrats.length ? `<div class="cal-strats">${c.allStrats.map(s=>`<span class="cal-strat">${s}</span>`).join('')}</div>` : ''}
+      ` : ''}
+    </div>`;
+  }).join('');
+
+  // Zobraz panel vybraného dne
+  if(calSelectedDay) renderCalDayPanel(calSelectedDay, byDay[calSelectedDay]||[]);
+  else document.getElementById('cal-day-panel').innerHTML = '';
+}
+
+function calSelectDay(dateStr) {
+  if(calSelectedDay === dateStr) {
+    calSelectedDay = null;
+    document.getElementById('cal-day-panel').innerHTML = '';
+    document.querySelectorAll('.cal-cell.selected').forEach(e=>e.classList.remove('selected'));
+    return;
+  }
+  calSelectedDay = dateStr;
+  renderCalendar();
+}
+
+function renderCalDayPanel(dateStr, dayTrades) {
+  const panel = document.getElementById('cal-day-panel');
+  if(!dayTrades.length) { panel.innerHTML=''; return; }
+  const dayPnl = dayTrades.reduce((s,t)=>s+calcPnl(t),0);
+  const fmt = new Date(dateStr+'T12:00').toLocaleDateString('cs-CZ',{weekday:'long',day:'numeric',month:'long'});
+  panel.innerHTML = `
+    <div class="cal-day-panel">
+      <div class="cal-day-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>${fmt}</span>
+        <span style="font-family:var(--display);font-size:16px;font-weight:700;color:${dayPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(dayPnl)}</span>
+      </div>
+      <div class="cards-grid">
+        ${dayTrades.map(t => {
+          const pnl = calcPnl(t);
+          const res = getResult(t);
+          const rawImg = t.img || t.chartUrl || '';
+          const imgSrc = rawImg && (rawImg.startsWith('data:')||rawImg.startsWith('http')) ? rawImg : '';
+          const pnlClass = pnl>0?'pos':pnl<0?'neg':'be';
+          return `<div class="trade-card" onclick="openEdit(${t._id},event)">
+            <div class="trade-card-img">
+              ${imgSrc ? `<img src="${imgSrc}" alt="chart" onclick="event.stopPropagation();openLightbox(this.src)"/>` : `<div class="trade-card-no-img">📈</div>`}
+              <div class="trade-card-pnl-overlay ${pnlClass}">${fmtPnl(pnl)}</div>
+            </div>
+            <div class="trade-card-body">
+              <div class="trade-card-top">
+                <span class="trade-card-symbol">${t.symbol}</span>
+                <span class="badge ${t.dir==='LONG'?'long':'short'}">${t.dir}</span>
+              </div>
+              <div class="trade-card-row">
+                <span class="badge ${res}">${res==='win'?'WIN':res==='loss'?'LOSS':'BE'}</span>
+                ${(t.strategy||[]).slice(0,2).map(s=>`<span class="tag" style="cursor:default;font-size:9px;padding:2px 7px">${s}</span>`).join('')}
+              </div>
+              <div class="trade-card-prices" style="margin-top:6px">${t.entry} → ${t.exit} · ${t.size||1}×${t.duration?' · '+t.duration:''}</div>
+              ${t.reason?`<div style="font-size:11px;color:var(--text3);margin-top:4px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">${t.reason}</div>`:''}
+            </div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
 }
 
 // ── INIT ──
