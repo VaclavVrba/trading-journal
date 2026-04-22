@@ -317,7 +317,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <div class="db-status"><div class="db-dot off" id="db-dot"></div><span class="db-txt" id="db-txt">connecting</span></div>
     <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
       <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tv-status-txt">Tradovate: —</span>
-      <button onclick="openSettings()" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;" title="Nastavení Tradovate">⚙</button>
+      <button id="settings-open-btn" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;" title="Nastavení Tradovate">⚙</button>
     </div>
   </div>
 </nav>
@@ -639,7 +639,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     </div>
     <div class="btn-row" style="flex-wrap:wrap;gap:10px;">
       <button class="btn btn-primary" onclick="saveEdit()">Uložit změny</button>
-      <button class="chart-gen-btn" id="modal-chart-btn" onclick="genChartFromModal()">📊 Generovat chart z Polygon.io</button>
+      <button class="chart-gen-btn" id="modal-chart-btn" onclick="genChartFromModal()">📊 Generovat chart</button>
       <button class="btn btn-ghost" onclick="closeEditModal()">Zrušit</button>
     </div>
   </div>
@@ -1678,96 +1678,235 @@ function renderCalDayPanel(dateStr, dayTrades) {
     </div>`;
 }
 
+
 // ══════════════════════════════════════════
-// ── CHART GENERATOR (Yahoo Finance + Lightweight Charts) ──
+// ── TRADOVATE API + CHART GENERATOR ──
 // ══════════════════════════════════════════
 
-// Yahoo Finance ticker pro futures (=F suffix)
-function yahooTicker(symbol) {
-  const futures = ['MNQ','NQ','ES','MES','YM','MYM','RTY','GC','MGC','CL','MCL','SI','ZB','ZN'];
-  if(futures.includes(symbol.toUpperCase())) return symbol.toUpperCase() + '=F';
-  return symbol.toUpperCase();
+// ── Settings ──
+function openSettings() {
+  const s = JSON.parse(localStorage.getItem('tv_cfg') || '{}');
+  document.getElementById('s-username').value = s.user || '';
+  document.getElementById('s-password').value = s.pass || '';
+  document.getElementById('s-env').value = s.env || 'live';
+  document.getElementById('s-status-row').style.display = 'none';
+  document.getElementById('settings-modal').classList.add('open');
 }
+function closeSettings() { document.getElementById('settings-modal').classList.remove('open'); }
 
-// Fallback: micro → standard kontrakt
-function yahooTickerFallback(symbol) {
-  const fb = { 'MNQ':'NQ=F','MES':'ES=F','MYM':'YM=F','MGC':'GC=F','MCL':'CL=F' };
-  return fb[symbol.toUpperCase()] || null;
-}
+async function testAndSaveSettings() {
+  const user = document.getElementById('s-username').value.trim();
+  const pass = document.getElementById('s-password').value.trim();
+  const env  = document.getElementById('s-env').value;
+  if(!user || !pass) { toast('Vyplň username a heslo', 'err'); return; }
 
-// Interval podle stáří obchodu
-function pickInterval(entryDateStr) {
-  const days = (Date.now() - new Date(entryDateStr).getTime()) / 86400000;
-  if(days <= 6)  return '1m';
-  if(days <= 59) return '5m';
-  return '60m';
-}
+  const row   = document.getElementById('s-status-row');
+  const badge = document.getElementById('s-badge');
+  const msg   = document.getElementById('s-msg');
+  row.style.display = 'flex';
+  badge.className = 'settings-badge';
+  badge.textContent = '⟳ Testuji...';
+  msg.textContent = '';
 
-async function fetchYahooCandles(ticker, period1, period2, interval) {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`
-    + `?interval=${interval}&period1=${period1}&period2=${period2}&includePrePost=true`;
-  let resp;
   try {
-    resp = await fetch(url, { headers:{ 'Accept':'application/json' } });
+    const token = await tvAuth(user, pass, env);
+    localStorage.setItem('tv_cfg', JSON.stringify({ user, pass, env, token, tokenTs: Date.now() }));
+    badge.className = 'settings-badge ok';
+    badge.textContent = '✓ Připojeno';
+    msg.textContent = 'Token uložen';
+    document.getElementById('tv-status-txt').textContent = 'Tradovate: ✓';
+    toast('Tradovate připojeno!', 'ok');
   } catch(e) {
-    resp = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+    badge.className = 'settings-badge fail';
+    badge.textContent = '✗ Chyba';
+    msg.textContent = e.message;
   }
-  if(!resp.ok) throw new Error('HTTP ' + resp.status);
+}
+
+// ── Auth ──
+const TV_LIVE = 'https://live.tradovateapi.com/v1';
+const TV_DEMO = 'https://demo.tradovateapi.com/v1';
+const TV_CID  = 7;
+const TV_SEC  = '5bbsa81-bc99-111f-2ba3-b66c5a04e3ef';
+
+async function tvAuth(user, pass, env) {
+  const base = env === 'demo' ? TV_DEMO : TV_LIVE;
+  const resp = await fetch(base + '/auth/accesstokenrequest', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+    body: JSON.stringify({
+      name: user, password: pass,
+      appId: 'TradingJournal', appVersion: '1.0',
+      cid: TV_CID, sec: TV_SEC,
+      deviceId: 'tj-' + user.replace(/[^a-z0-9]/gi,'').slice(0,12)
+    })
+  });
+  const data = await resp.json();
+  if(data.errorText || !data.accessToken) throw new Error(data.errorText || 'Auth selhal');
+  return data.accessToken;
+}
+
+async function tvGetToken() {
+  const cfg = JSON.parse(localStorage.getItem('tv_cfg') || '{}');
+  // Token platí cca 24h — obnovíme ho pokud je starší 23h
+  if(cfg.token && cfg.tokenTs && Date.now() - cfg.tokenTs < 23*60*60*1000) return cfg.token;
+  if(!cfg.user || !cfg.pass) throw new Error('Nastav Tradovate přihlášení (⚙ v postranním panelu)');
+  const token = await tvAuth(cfg.user, cfg.pass, cfg.env || 'live');
+  cfg.token = token; cfg.tokenTs = Date.now();
+  localStorage.setItem('tv_cfg', JSON.stringify(cfg));
+  return token;
+}
+
+// ── WebSocket chart data ──
+function tvGetChart(symbol, nearTimestamp, numBars) {
+  numBars = numBars || 300;
+  return new Promise(async (resolve, reject) => {
+    let token;
+    try { token = await tvGetToken(); }
+    catch(e) { return reject(e); }
+
+    const ws = new WebSocket('wss://md.tradovateapi.com/v1/websocket');
+    const timeout = setTimeout(() => { ws.close(); reject(new Error('Tradovate timeout (20s)')); }, 20000);
+    let step = 0;
+
+    ws.onopen = () => ws.send('authorize\n1\n\n' + token);
+
+    ws.onmessage = (ev) => {
+      const raw = ev.data;
+      if(raw === 'o' || raw === 'h') return;
+      try {
+        if(!raw.startsWith('a')) return;
+        const msgs = JSON.parse(raw.slice(1));
+        for(const msg of msgs) {
+          // Auth potvrzení
+          if(step === 0 && msg.i === 1 && msg.s === 200) {
+            step = 1;
+            ws.send('md/getChart\n2\n\n' + JSON.stringify({
+              symbol: symbol,
+              chartDescription: {
+                underlyingType: 'MinuteBar',
+                elementSize: 1,
+                elementSizeUnit: 'UnderlyingUnits',
+                withHistogram: false
+              },
+              timeRange: {
+                closestTimestamp: new Date(nearTimestamp).toISOString(),
+                asMuchAsElements: numBars
+              }
+            }));
+          }
+          // Chart data
+          if(msg.e === 'md' && msg.d && msg.d.charts) {
+            const bars = msg.d.charts[0] && msg.d.charts[0].bars;
+            if(bars && bars.length) {
+              clearTimeout(timeout);
+              ws.close();
+              resolve(bars.map(b => ({
+                time:  Math.floor(new Date(b.timestamp).getTime() / 1000),
+                open:  b.open, high: b.high, low: b.low, close: b.close
+              })));
+              return;
+            }
+          }
+          // Auth error
+          if(step === 0 && msg.i === 1 && msg.s !== 200) {
+            clearTimeout(timeout);
+            ws.close();
+            reject(new Error('Token odmítnut, přihlas se znovu v ⚙'));
+          }
+        }
+      } catch(e) { console.error('TV WS parse:', e); }
+    };
+
+    ws.onerror = () => { clearTimeout(timeout); reject(new Error('WebSocket chyba')); };
+  });
+}
+
+// ── Yahoo Finance fallback ──
+function yahooTicker(symbol) {
+  const f = ['MNQ','NQ','ES','MES','YM','MYM','RTY','GC','MGC','CL','MCL','SI'];
+  return f.includes(symbol.toUpperCase()) ? symbol.toUpperCase() + '=F' : symbol.toUpperCase();
+}
+function yahooFallback(symbol) {
+  return { 'MNQ':'NQ=F','MES':'ES=F','MYM':'YM=F','MGC':'GC=F','MCL':'CL=F' }[symbol.toUpperCase()] || null;
+}
+function pickInterval(dateStr) {
+  const days = (Date.now() - new Date(dateStr).getTime()) / 86400000;
+  return days <= 6 ? '1m' : days <= 59 ? '5m' : '60m';
+}
+async function fetchYahoo(ticker, p1, p2, interval) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=${interval}&period1=${p1}&period2=${p2}&includePrePost=true`;
+  let resp;
+  try { resp = await fetch(url, { headers:{'Accept':'application/json'} }); }
+  catch(e) { resp = await fetch('https://corsproxy.io/?' + encodeURIComponent(url)); }
+  if(!resp.ok) throw new Error('Yahoo HTTP ' + resp.status);
   const json = await resp.json();
   const result = json.chart && json.chart.result && json.chart.result[0];
-  if(!result) {
-    const err = json.chart && json.chart.error;
-    throw new Error((err && err.description) || ('Zadna data pro ' + ticker));
-  }
-  const ts    = result.timestamp || [];
-  const quote = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
+  if(!result) throw new Error('Yahoo: žádná data pro ' + ticker);
+  const ts = result.timestamp || [];
+  const q  = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
   return ts.map((t,i) => ({
-    time:  t,
-    open:  quote.open  && quote.open[i],
-    high:  quote.high  && quote.high[i],
-    low:   quote.low   && quote.low[i],
-    close: quote.close && quote.close[i],
-  })).filter(c => c.open != null && c.close != null);
+    time:t, open:q.open&&q.open[i], high:q.high&&q.high[i], low:q.low&&q.low[i], close:q.close&&q.close[i]
+  })).filter(c => c.open!=null && c.close!=null);
 }
 
+// ── Hlavní funkce: generovat chart pro obchod ──
 async function generateTradeChart(trade, btnEl) {
-  if(btnEl) { btnEl.disabled = true; btnEl.textContent = '⟳ Nacitam data...'; }
+  if(btnEl) { btnEl.disabled=true; btnEl.textContent='⟳ Načítám data...'; }
   try {
     const entryDate = trade.date || trade.ts || '';
     const exitDate  = trade.exitDate || '';
-    if(!entryDate) throw new Error('Obchod nema datum vstupu');
+    if(!entryDate) throw new Error('Obchod nemá datum vstupu');
 
-    const entryMs = new Date(entryDate).getTime();
-    const exitMs  = exitDate ? new Date(exitDate).getTime() : entryMs + 60*60*1000;
-    const period1  = Math.floor((entryMs - 75*60*1000) / 1000);
-    const period2  = Math.floor((exitMs  + 75*60*1000) / 1000);
-    const interval = pickInterval(entryDate);
+    const entryMs  = new Date(entryDate).getTime();
+    const exitMs   = exitDate ? new Date(exitDate).getTime() : entryMs + 3600000;
+    // Symbol: použij contractName (MNQM6) pro Tradovate, symbol (MNQ) jako fallback
+    const tvSymbol = trade.contractName || trade.symbol;
 
-    let candles = null, usedTicker = yahooTicker(trade.symbol);
+    let candles = null, source = '';
+
+    // 1. Zkus Tradovate WebSocket
     try {
-      candles = await fetchYahooCandles(usedTicker, period1, period2, interval);
+      if(btnEl) btnEl.textContent = '⟳ Tradovate...';
+      // Střed okna = uprostřed mezi vstupem a výstupem
+      const midMs = Math.round((entryMs + exitMs) / 2);
+      candles = await tvGetChart(tvSymbol, midMs, 350);
+      source = 'Tradovate/' + tvSymbol;
     } catch(e) {
-      const fb = yahooTickerFallback(trade.symbol);
-      if(fb) { usedTicker = fb; candles = await fetchYahooCandles(fb, period1, period2, interval); }
-      else throw e;
+      console.warn('Tradovate fallback:', e.message);
+      // 2. Fallback: Yahoo Finance
+      if(btnEl) btnEl.textContent = '⟳ Yahoo Finance...';
+      const p1  = Math.floor((entryMs - 75*60*1000) / 1000);
+      const p2  = Math.floor((exitMs  + 75*60*1000) / 1000);
+      const ivl = pickInterval(entryDate);
+      const yt  = yahooTicker(trade.symbol);
+      try {
+        candles = await fetchYahoo(yt, p1, p2, ivl);
+        source  = 'Yahoo/' + yt;
+      } catch(e2) {
+        const fb = yahooFallback(trade.symbol);
+        if(fb) { candles = await fetchYahoo(fb, p1, p2, ivl); source = 'Yahoo/' + fb; }
+        else throw e2;
+      }
     }
-    if(!candles || !candles.length) throw new Error('Zadne svicky pro ' + usedTicker);
+
+    if(!candles || !candles.length) throw new Error('Žádná data ze žádného zdroje');
     if(btnEl) btnEl.textContent = '⟳ Renderuji...';
 
-    // Off-screen chart kontejner
+    // ── Lightweight Charts ──
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1000px;height:520px;background:#0e0e1a;';
     document.body.appendChild(wrap);
 
     const chart = LightweightCharts.createChart(wrap, {
-      width: 1000, height: 520,
-      layout: { background:{ color:'#0e0e1a' }, textColor:'#8888a8', fontSize:11 },
-      grid:   { vertLines:{ color:'rgba(255,255,255,0.04)' }, horzLines:{ color:'rgba(255,255,255,0.04)' } },
-      rightPriceScale: { borderColor:'rgba(255,255,255,0.08)', scaleMargins:{ top:0.12, bottom:0.08 } },
-      timeScale: { borderColor:'rgba(255,255,255,0.08)', timeVisible:true, secondsVisible:false },
-      crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
-      watermark: { visible:true, fontSize:48, horzAlign:'center', vertAlign:'center',
-                   color:'rgba(255,255,255,0.03)', text: trade.symbol + ' · ' + trade.dir },
+      width:1000, height:520,
+      layout:{ background:{color:'#0e0e1a'}, textColor:'#8888a8', fontSize:11 },
+      grid:{ vertLines:{color:'rgba(255,255,255,0.04)'}, horzLines:{color:'rgba(255,255,255,0.04)'} },
+      rightPriceScale:{ borderColor:'rgba(255,255,255,0.08)', scaleMargins:{top:0.1,bottom:0.08} },
+      timeScale:{ borderColor:'rgba(255,255,255,0.08)', timeVisible:true, secondsVisible:false },
+      crosshair:{ mode: LightweightCharts.CrosshairMode.Magnet },
+      watermark:{ visible:true, fontSize:50, horzAlign:'center', vertAlign:'center',
+                  color:'rgba(255,255,255,0.03)', text: trade.symbol + ' · ' + trade.dir },
     });
 
     const series = chart.addCandlestickSeries({
@@ -1785,23 +1924,17 @@ async function generateTradeChart(trade, btnEl) {
     const isLong  = trade.dir === 'LONG';
 
     series.setMarkers([
-      { time:entryTs, position: isLong?'belowBar':'aboveBar', color:'#05f593',
-        shape: isLong?'arrowUp':'arrowDown', text:'Entry  '+trade.entry, size:2 },
-      { time:exitTs,  position: isLong?'aboveBar':'belowBar',
-        color: pnl>=0?'#05f593':'#ff4466',
-        shape: isLong?'arrowDown':'arrowUp', text:'Exit  '+fmtPnl(pnl), size:2 },
+      { time:entryTs, position:isLong?'belowBar':'aboveBar', color:'#05f593',
+        shape:isLong?'arrowUp':'arrowDown', text:'Entry  '+trade.entry, size:2 },
+      { time:exitTs,  position:isLong?'aboveBar':'belowBar',
+        color:pnl>=0?'#05f593':'#ff4466',
+        shape:isLong?'arrowDown':'arrowUp', text:'Exit  '+fmtPnl(pnl), size:2 },
     ].sort((a,b) => a.time - b.time));
 
-    series.createPriceLine({ price:parseFloat(trade.entry), color:'rgba(5,245,147,0.55)',
-      lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Entry' });
-    series.createPriceLine({ price:parseFloat(trade.exit), color: pnl>=0?'rgba(5,245,147,0.55)':'rgba(255,68,102,0.55)',
-      lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Exit' });
-    if(trade.sl && parseFloat(trade.sl))
-      series.createPriceLine({ price:parseFloat(trade.sl), color:'rgba(255,68,102,0.45)',
-        lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'SL' });
-    if(trade.tp && parseFloat(trade.tp))
-      series.createPriceLine({ price:parseFloat(trade.tp), color:'rgba(77,143,255,0.45)',
-        lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'TP' });
+    series.createPriceLine({price:parseFloat(trade.entry),color:'rgba(5,245,147,0.55)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'Entry'});
+    series.createPriceLine({price:parseFloat(trade.exit), color:pnl>=0?'rgba(5,245,147,0.55)':'rgba(255,68,102,0.55)',lineWidth:1,lineStyle:2,axisLabelVisible:true,title:'Exit'});
+    if(trade.sl&&parseFloat(trade.sl)) series.createPriceLine({price:parseFloat(trade.sl),color:'rgba(255,68,102,0.45)',lineWidth:1,lineStyle:1,axisLabelVisible:true,title:'SL'});
+    if(trade.tp&&parseFloat(trade.tp)) series.createPriceLine({price:parseFloat(trade.tp),color:'rgba(77,143,255,0.45)',lineWidth:1,lineStyle:1,axisLabelVisible:true,title:'TP'});
 
     chart.timeScale().fitContent();
     await new Promise(r => setTimeout(r, 600));
@@ -1811,14 +1944,13 @@ async function generateTradeChart(trade, btnEl) {
     chart.remove();
     document.body.removeChild(wrap);
 
-    const updated = { ...trade, img: imageUrl };
-    delete updated._id;
+    const updated = {...trade, img:imageUrl}; delete updated._id;
     await updateTrade(trade._id, updated);
     const idx = trades.findIndex(t => t._id === trade._id);
-    if(idx >= 0) trades[idx] = { ...trades[idx], img: imageUrl };
+    if(idx >= 0) trades[idx] = {...trades[idx], img:imageUrl};
 
-    if(btnEl) { btnEl.disabled=false; btnEl.textContent='✓ Chart ulozen'; btnEl.className='chart-gen-btn ok'; }
-    toast('Chart ' + trade.symbol + ' vygenerovan! (' + interval + ' / ' + usedTicker + ')', 'ok');
+    if(btnEl) { btnEl.disabled=false; btnEl.textContent='✓ Chart uložen'; btnEl.className='chart-gen-btn ok'; }
+    toast('Chart uložen · ' + source, 'ok');
     return imageUrl;
 
   } catch(e) {
@@ -1828,7 +1960,6 @@ async function generateTradeChart(trade, btnEl) {
     return null;
   }
 }
-
 
 // Generovat chart z edit modalu pro aktuálně editovaný obchod
 async function genChartFromModal() {
@@ -1866,7 +1997,15 @@ async function generateAllCharts(list, progressEl, barEl) {
 // ── INIT ──
 document.getElementById('f-date').value=new Date().toISOString().slice(0,16);
 document.getElementById('f-dir').addEventListener('change',updateRR);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeLightbox();closeEditModal();}});
+document.getElementById('settings-open-btn').addEventListener('click', openSettings);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){closeLightbox();closeEditModal();closeSettings();}
+});
+// Ukáže stav Tradovate při startu
+(function(){
+  const cfg = JSON.parse(localStorage.getItem('tv_cfg')||'{}');
+  if(cfg.token) document.getElementById('tv-status-txt').textContent='Tradovate: ✓';
+})();
 loadTrades().then(()=>renderDashboard());
 </script>
 </body>
