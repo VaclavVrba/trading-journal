@@ -659,8 +659,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <div class="fg" style="margin-bottom:20px">
       <label>Prostředí</label>
       <select id="s-env">
-        <option value="live">Live (Alpha Futures / Apex)</option>
-        <option value="demo">Demo</option>
+        <option value="demo">Demo / Prop firm (Alpha, Apex, Topstep…)</option>
+        <option value="live">Live (vlastní live Tradovate účet)</option>
       </select>
     </div>
     <div class="settings-row" id="s-status-row" style="display:none">
@@ -1729,20 +1729,35 @@ const TV_DEMO = 'https://demo.tradovateapi.com/v1';
 const TV_CID  = 7;
 const TV_SEC  = '5bbsa81-bc99-111f-2ba3-b66c5a04e3ef';
 
+async function tvFetch(url, options) {
+  // Zkus přímý požadavek, při CORS chybě použij proxy
+  try {
+    const r = await fetch(url, options);
+    if(r.ok || r.status === 401) return r; // 401 = auth chyba, ne CORS
+    throw new Error('HTTP ' + r.status);
+  } catch(e) {
+    if(e.message && e.message.includes('401')) throw e;
+    // CORS fallback
+    const proxy = 'https://corsproxy.io/?' + encodeURIComponent(url);
+    return fetch(proxy, options);
+  }
+}
+
 async function tvAuth(user, pass, env) {
-  const base = env === 'demo' ? TV_DEMO : TV_LIVE;
-  const resp = await fetch(base + '/auth/accesstokenrequest', {
+  const base = (env === 'live') ? TV_LIVE : TV_DEMO;
+  const body = JSON.stringify({
+    name: user, password: pass,
+    appId: 'TradingJournal', appVersion: '1.0',
+    cid: TV_CID, sec: TV_SEC,
+    deviceId: 'tj-' + user.replace(/[^a-z0-9]/gi,'').slice(0,12)
+  });
+  const resp = await tvFetch(base + '/auth/accesstokenrequest', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-    body: JSON.stringify({
-      name: user, password: pass,
-      appId: 'TradingJournal', appVersion: '1.0',
-      cid: TV_CID, sec: TV_SEC,
-      deviceId: 'tj-' + user.replace(/[^a-z0-9]/gi,'').slice(0,12)
-    })
+    body
   });
   const data = await resp.json();
-  if(data.errorText || !data.accessToken) throw new Error(data.errorText || 'Auth selhal');
+  if(data.errorText || !data.accessToken) throw new Error(data.errorText || 'Auth selhal — zkontroluj username/heslo');
   return data.accessToken;
 }
 
