@@ -6,6 +6,7 @@
 <title>Trading Journal</title>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://unpkg.com/lightweight-charts@4.2.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>
 :root {
   --bg:      #080810;
@@ -213,41 +214,42 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
 .import-stat .val{font-family:var(--display);font-size:20px;font-weight:700;}
 .dup-badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:3px;font-size:10px;font-family:var(--mono);background:var(--adim);color:var(--amber);border:1px solid rgba(255,176,48,.2);margin-left:6px;}
 /* ── CALENDAR ── */
+.cal-header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px;}
+.cal-nav{display:flex;align-items:center;gap:8px;}
+.cal-nav-title{font-family:var(--display);font-size:16px;font-weight:700;min-width:160px;text-align:center;}
+.cal-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:16px;}
+.cal-stat{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
+.cal-stat-lbl{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:5px;}
+.cal-stat-val{font-family:var(--display);font-size:18px;font-weight:700;}
 .cal-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:16px;}
-.cal-head-row{display:grid;grid-template-columns:repeat(7,1fr) 90px;border-bottom:1px solid var(--border);}
-.cal-head-row span{padding:10px 6px;text-align:center;font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
+.cal-days-hdr{display:grid;grid-template-columns:repeat(7,1fr) 90px;border-bottom:1px solid var(--border);}
+.cal-days-hdr div{padding:10px 6px;text-align:center;font-size:10px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr) 90px;}
-.cal-cell{min-height:90px;padding:8px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative;overflow:hidden;}
-.cal-cell:nth-child(7n){border-right:none;}
+.cal-cell{min-height:88px;padding:8px 10px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;overflow:hidden;}
+.cal-cell:nth-child(8n-1){border-right:none;}
 .cal-cell:hover{background:rgba(255,255,255,.03);}
-.cal-cell.other-month{opacity:.25;pointer-events:none;}
-.cal-cell.has-trades.profitable{background:rgba(5,245,147,.08);}
-.cal-cell.has-trades.profitable:hover{background:rgba(5,245,147,.14);}
-.cal-cell.has-trades.losing{background:rgba(255,68,102,.08);}
-.cal-cell.has-trades.losing:hover{background:rgba(255,68,102,.14);}
+.cal-cell.empty{pointer-events:none;opacity:.2;}
+.cal-cell.profitable{background:rgba(5,245,147,.07);}
+.cal-cell.profitable:hover{background:rgba(5,245,147,.13);}
+.cal-cell.losing{background:rgba(255,68,102,.07);}
+.cal-cell.losing:hover{background:rgba(255,68,102,.13);}
 .cal-cell.selected{outline:2px solid var(--accent);outline-offset:-2px;z-index:1;}
-.cal-num{font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:5px;display:inline-block;}
-.cal-cell.today .cal-num{background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-weight:700;}
-.cal-pnl{font-family:var(--display);font-size:14px;font-weight:700;line-height:1.2;margin-bottom:2px;}
-.cal-pnl.pos{color:var(--green);}
-.cal-pnl.neg{color:var(--red);}
-.cal-cnt{font-size:10px;color:var(--text3);font-family:var(--mono);}
-.cal-strats{display:flex;flex-wrap:wrap;gap:2px;margin-top:4px;}
-.cal-strat{font-size:9px;padding:1px 5px;border-radius:3px;font-family:var(--mono);background:var(--bg5);color:var(--text3);}
-.cal-month-nav{display:flex;align-items:center;gap:10px;}
-.cal-month-title{font-family:var(--display);font-size:16px;font-weight:700;min-width:150px;text-align:center;}
-.cal-summary{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px;}
-.cal-week-sum{background:var(--bg3);border-left:1px solid var(--border2);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;justify-content:center;align-items:flex-start;}
+.cal-day-num{font-size:11px;font-family:var(--mono);color:var(--text3);margin-bottom:5px;display:inline-block;}
+.cal-cell.today .cal-day-num{background:var(--accent);color:#000;border-radius:50%;width:20px;height:20px;line-height:20px;text-align:center;font-weight:700;}
+.cal-day-pnl{font-family:var(--display);font-size:14px;font-weight:700;margin-bottom:2px;}
+.cal-day-pnl.pos{color:var(--green);}
+.cal-day-pnl.neg{color:var(--red);}
+.cal-day-cnt{font-size:10px;color:var(--text3);font-family:var(--mono);}
+.cal-week-sum{background:var(--bg3);border-left:1px solid var(--border2);border-bottom:1px solid var(--border);padding:8px 10px;display:flex;flex-direction:column;justify-content:center;}
 .cal-week-sum .wlbl{font-size:9px;color:var(--text3);font-family:var(--mono);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px;}
 .cal-week-sum .wpnl{font-family:var(--display);font-size:13px;font-weight:700;}
 .cal-week-sum .wpnl.pos{color:var(--green);}
 .cal-week-sum .wpnl.neg{color:var(--red);}
 .cal-week-sum .wcnt{font-size:10px;color:var(--text3);font-family:var(--mono);margin-top:2px;}
-.cal-sum-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;}
-.cal-sum-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.1em;font-family:var(--mono);margin-bottom:5px;}
-.cal-sum-val{font-family:var(--display);font-size:18px;font-weight:700;}
-.cal-day-panel{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:16px;margin-top:12px;}
-.cal-day-title{font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);margin-bottom:12px;}
+.cal-day-detail{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rl);padding:16px;margin-top:12px;}
+.cal-day-detail-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;}
+.cal-day-detail-title{font-size:12px;font-weight:600;color:var(--text2);font-family:var(--mono);}
+.cal-day-detail-pnl{font-family:var(--display);font-size:16px;font-weight:700;}
 /* ── TRADE CARDS ── */
 .journal-toggle{display:flex;gap:6px;margin-bottom:16px;}
 .view-btn{padding:6px 14px;border-radius:6px;font-size:12px;border:1px solid var(--border2);background:var(--bg3);color:var(--text3);cursor:pointer;transition:all .15s;font-family:var(--mono);}
@@ -277,6 +279,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
   .grid2,.fgrid,.fgrid.c3,.fgrid.c4{grid-template-columns:1fr;}
   .jcard-body.open{grid-template-columns:1fr;}
 }
+/* ── CHART GEN ── */
+.chart-gen-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r);font-size:12px;font-family:var(--mono);border:1px solid rgba(77,143,255,.35);background:var(--bdim);color:var(--blue);cursor:pointer;transition:all .15s;}
+.chart-gen-btn:hover{background:rgba(77,143,255,.18);}
+.chart-gen-btn:disabled{opacity:.45;cursor:default;}
+.chart-gen-btn.ok{border-color:rgba(5,245,147,.35);background:var(--gdim);color:var(--green);}
+.chart-gen-btn.err{border-color:rgba(255,68,102,.35);background:var(--rdim);color:var(--red);}
+.chart-gen-progress{margin-top:10px;font-size:11px;font-family:var(--mono);color:var(--text3);}
+.chart-gen-bar{height:3px;background:var(--bg4);border-radius:2px;margin-top:6px;overflow:hidden;}
+.chart-gen-bar-fill{height:100%;background:var(--blue);border-radius:2px;transition:width .3s;}
 </style>
 </head>
 <body>
@@ -300,6 +311,20 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <div class="db-status"><div class="db-dot off" id="db-dot"></div><span class="db-txt" id="db-txt">connecting</span></div>
   </div>
 </nav>
+<!-- SYMBOL DATALIST -->
+<datalist id="symbol-list">
+  <option value="MNQ"/>
+  <option value="MGC"/>
+  <option value="MYM"/>
+  <option value="ES"/>
+  <option value="NQ"/>
+  <option value="YM"/>
+  <option value="RTY"/>
+  <option value="GC"/>
+  <option value="CL"/>
+  <option value="MES"/>
+  <option value="MCL"/>
+</datalist>
 <!-- MAIN -->
 <main class="main">
 <!-- ══ DASHBOARD ══ -->
@@ -328,7 +353,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
   <div class="fsec">
     <div class="fsec-title">Základní informace</div>
     <div class="fgrid c3">
-      <div class="fg"><label>Symbol</label><input type="text" id="f-symbol" placeholder="BTC/USD, AAPL…"/></div>
+      <div class="fg"><label>Symbol</label><input type="text" id="f-symbol" list="symbol-list" placeholder="MNQ, MGC…" autocomplete="off"/></div>
       <div class="fg"><label>Datum & čas</label><input type="datetime-local" id="f-date"/></div>
       <div class="fg"><label>Směr</label><select id="f-dir"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
       <div class="fg"><label>Vstupní cena</label><input type="number" id="f-entry" placeholder="0.00" step="any" oninput="updateRR()"/></div>
@@ -482,9 +507,14 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
         <tbody id="import-tbody"></tbody>
       </table>
     </div>
-    <div class="btn-row" style="margin-top:16px">
+    <div class="btn-row" style="margin-top:16px;flex-wrap:wrap;gap:10px;">
       <button class="btn btn-primary" id="import-confirm-btn" onclick="confirmImport()">Importovat</button>
+      <button class="chart-gen-btn" id="bulk-chart-btn" style="display:none" onclick="startBulkChartGen()">📊 Generovat charty (Polygon.io)</button>
       <button class="btn btn-ghost" onclick="clearImport()">Zrušit</button>
+    </div>
+    <div id="bulk-chart-progress" style="display:none" class="chart-gen-progress">
+      <span id="bulk-chart-status">Připravuji…</span>
+      <div class="chart-gen-bar"><div class="chart-gen-bar-fill" id="bulk-chart-bar" style="width:0%"></div></div>
     </div>
   </div>
 </div>
@@ -536,29 +566,30 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <button class="btn btn-primary" onclick="saveDailyJournal()">Uložit deník</button>
   </div>
 </div>
-</main>
-</div>
 <!-- ══ CALENDAR ══ -->
 <div id="tab-calendar" class="section">
-  <div class="ph">
-    <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap">
-      <div><div class="ph-title">Kalendář</div><div class="ph-sub">P&L přehled po dnech</div></div>
-      <div class="cal-month-nav">
-        <button class="btn btn-ghost btn-sm" onclick="calPrevMonth()">←</button>
-        <div class="cal-month-title" id="cal-month-title"></div>
-        <button class="btn btn-ghost btn-sm" onclick="calNextMonth()">→</button>
-        <button class="btn btn-ghost btn-sm" onclick="calGoToday()">Dnes</button>
-      </div>
+  <div class="cal-header">
+    <div>
+      <div class="ph-title">Kalendář</div>
+      <div class="ph-sub">P&amp;L přehled po dnech</div>
+    </div>
+    <div class="cal-nav">
+      <button class="btn btn-ghost btn-sm" onclick="calPrevMonth()">←</button>
+      <div class="cal-nav-title" id="cal-month-title"></div>
+      <button class="btn btn-ghost btn-sm" onclick="calNextMonth()">→</button>
+      <button class="btn btn-ghost btn-sm" onclick="calGoToday()">Dnes</button>
     </div>
   </div>
-  <div class="cal-summary" id="cal-summary"></div>
+  <div class="cal-stats" id="cal-stats"></div>
   <div class="cal-wrap">
-    <div class="cal-head-row">
-      <span>Po</span><span>Út</span><span>St</span><span>Čt</span><span>Pá</span><span>So</span><span>Ne</span><span>Týden</span>
+    <div class="cal-days-hdr">
+      <div>Po</div><div>Út</div><div>St</div><div>Čt</div><div>Pá</div><div>So</div><div>Ne</div><div>Týden</div>
     </div>
     <div class="cal-grid" id="cal-grid"></div>
   </div>
   <div id="cal-day-panel"></div>
+</div>
+</main>
 </div>
 <!-- ══ LIGHTBOX ══ -->
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
@@ -570,7 +601,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
     <div class="modal-title" style="margin-bottom:20px">Upravit obchod</div>
     <div class="fsec" style="margin-bottom:12px">
       <div class="fgrid c3">
-        <div class="fg"><label>Symbol</label><input type="text" id="e-symbol"/></div>
+        <div class="fg"><label>Symbol</label><input type="text" id="e-symbol" list="symbol-list" autocomplete="off"/></div>
         <div class="fg"><label>Datum</label><input type="datetime-local" id="e-date"/></div>
         <div class="fg"><label>Směr</label><select id="e-dir"><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
         <div class="fg"><label>Vstup</label><input type="number" id="e-entry" step="any"/></div>
@@ -596,8 +627,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
         <div class="fg"><label>Tržní podmínky</label><select id="e-market"><option value="">—</option><option value="Trending">Trending</option><option value="Ranging">Ranging</option><option value="Volatile">Volatile</option><option value="Low volume">Low volume</option></select></div>
       </div>
     </div>
-    <div class="btn-row">
+    <div class="btn-row" style="flex-wrap:wrap;gap:10px;">
       <button class="btn btn-primary" onclick="saveEdit()">Uložit změny</button>
+      <button class="chart-gen-btn" id="modal-chart-btn" onclick="genChartFromModal()">📊 Generovat chart z Polygon.io</button>
       <button class="btn btn-ghost" onclick="closeEditModal()">Zrušit</button>
     </div>
   </div>
@@ -644,11 +676,14 @@ function showTab(t, el) {
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if(el) el.classList.add('active');
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
   if(t==='dashboard') renderDashboard();
   if(t==='journal') renderJournal();
   if(t==='calendar') renderCalendar();
   if(t==='stats') renderStats();
   if(t==='psychology') renderPsych();
+  requestAnimationFrame(()=>{ document.documentElement.scrollTop=0; document.body.scrollTop=0; });
 }
 function toast(msg, type='') {
   const el = document.getElementById('toast');
@@ -928,13 +963,16 @@ function parseTradovatePerformanceCSV(text) {
     const exit     = isLong ? sellPrice : buyPrice;
     const entryTs  = isLong ? boughtTs  : soldTs;
 
-    const symbol  = parseContractSymbol(contractName);
-    const dateStr = parseTradovateDate(entryTs);
+    const symbol   = parseContractSymbol(contractName);
+    const dateStr  = parseTradovateDate(entryTs);
+    const exitTs   = isLong ? soldTs : boughtTs;
+    const exitDate = parseTradovateDate(exitTs);
 
     result.push({
       symbol,
       contractName,
       date: dateStr,
+      exitDate,
       dir,
       entry,
       exit,
@@ -990,22 +1028,24 @@ function parseTradovateCSV(text) {
 
     if(!contractName || isNaN(entryPrice) || isNaN(exitPrice)) continue;
 
-    const symbol  = parseContractSymbol(contractName);
-    const dateStr = parseTradovateDate(get('EnteredAt'));
-    const dir     = type.toLowerCase() === 'long' ? 'LONG' : 'SHORT';
+    const symbol   = parseContractSymbol(contractName);
+    const dateStr  = parseTradovateDate(get('EnteredAt'));
+    const exitDate = parseTradovateDate(get('ExitedAt'));
+    const dir      = type.toLowerCase() === 'long' ? 'LONG' : 'SHORT';
 
     result.push({
       symbol,
       contractName,
       date: dateStr,
+      exitDate,
       dir,
       entry: entryPrice,
       exit:  exitPrice,
       size,
-      importedPnl: pnl,   // P&L z brokera (přesný, po fees)
+      importedPnl: pnl,
       fees,
       duration,
-      importId: rawId,     // ID z Tradovate pro detekci duplikátů
+      importId: rawId,
       source: 'tradovate',
       strategy: [],
       ts: new Date().toISOString()
@@ -1139,8 +1179,36 @@ async function confirmImport() {
   );
 
   importedTrades = [];
-  clearImport();
+  // Zobrazíme tlačítko pro generování chartů (nově importované obchody bez img)
+  const withoutChart = trades.filter(t => !t.img);
+  if(ok > 0 && withoutChart.length > 0) {
+    document.getElementById('import-preview-section').style.display = 'block';
+    document.getElementById('import-confirm-btn').style.display = 'none';
+    const bulkBtn = document.getElementById('bulk-chart-btn');
+    bulkBtn.style.display = 'inline-flex';
+    bulkBtn.textContent = `📊 Generovat charty pro ${withoutChart.length} obchodů`;
+  } else {
+    clearImport();
+  }
   renderDashboard();
+}
+
+async function startBulkChartGen() {
+  const withoutChart = trades.filter(t => !t.img && t.date);
+  if(!withoutChart.length) { toast('Všechny obchody už mají chart',''); return; }
+
+  const btn = document.getElementById('bulk-chart-btn');
+  btn.disabled = true;
+  btn.textContent = '⟳ Generuji…';
+  const progressWrap = document.getElementById('bulk-chart-progress');
+  const statusEl     = document.getElementById('bulk-chart-status');
+  const barEl        = document.getElementById('bulk-chart-bar');
+  progressWrap.style.display = 'block';
+
+  statusEl.textContent = `0/${withoutChart.length} — spouštím…`;
+  await generateAllCharts(withoutChart, statusEl, barEl);
+  btn.textContent = '✓ Hotovo';
+  btn.className   = 'chart-gen-btn ok';
 }
 
 function clearImport() {
@@ -1445,103 +1513,76 @@ function groupByDay() {
 
 function renderCalendar() {
   document.getElementById('cal-month-title').textContent = `${CS_MONTHS[calMonth]} ${calYear}`;
-  const byDay = groupByDay();
-  const today = new Date().toISOString().slice(0,10);
+  const byDay   = groupByDay();
+  const today   = new Date().toISOString().slice(0,10);
+  const monthKey = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
 
   // ── Měsíční souhrn ──
-  const monthKey    = `${calYear}-${String(calMonth+1).padStart(2,'0')}`;
-  const monthTrades = trades.filter(t => (t.date||t.ts||'').startsWith(monthKey));
-  const monthPnl    = monthTrades.reduce((s,t)=>s+calcPnl(t),0);
-  const monthWins   = monthTrades.filter(t=>calcPnl(t)>0);
-  const tradingDays = new Set(monthTrades.map(t=>(t.date||t.ts||'').slice(0,10))).size;
-  const profDays    = [...new Set(monthTrades.map(t=>(t.date||t.ts||'').slice(0,10)))]
-    .filter(d=>byDay[d]&&byDay[d].reduce((s,t)=>s+calcPnl(t),0)>0).length;
-  const wr = monthTrades.length ? (monthWins.length/monthTrades.length*100).toFixed(0)+'%' : '—';
+  const mTrades = trades.filter(t => (t.date||t.ts||'').startsWith(monthKey));
+  const mPnl    = mTrades.reduce((s,t) => s+calcPnl(t), 0);
+  const mWins   = mTrades.filter(t => calcPnl(t) > 0).length;
+  const mDays   = new Set(mTrades.map(t => (t.date||t.ts||'').slice(0,10))).size;
+  const mProfit = [...new Set(mTrades.map(t => (t.date||t.ts||'').slice(0,10)))]
+                    .filter(d => byDay[d] && byDay[d].reduce((s,t)=>s+calcPnl(t),0) > 0).length;
+  const mWR     = mTrades.length ? Math.round(mWins/mTrades.length*100)+'%' : '—';
 
-  document.getElementById('cal-summary').innerHTML = `
-    <div class="cal-sum-card">
-      <div class="cal-sum-label">Měsíční P&L</div>
-      <div class="cal-sum-val" style="color:${monthPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(monthPnl)}</div>
-    </div>
-    <div class="cal-sum-card">
-      <div class="cal-sum-label">Obchodů</div>
-      <div class="cal-sum-val">${monthTrades.length}</div>
-    </div>
-    <div class="cal-sum-card">
-      <div class="cal-sum-label">Win rate</div>
-      <div class="cal-sum-val">${wr}</div>
-    </div>
-    <div class="cal-sum-card">
-      <div class="cal-sum-label">Obch. dny</div>
-      <div class="cal-sum-val">${tradingDays}</div>
-    </div>
-    <div class="cal-sum-card">
-      <div class="cal-sum-label">Profit. dny</div>
-      <div class="cal-sum-val" style="color:var(--green)">${profDays}</div>
-    </div>
-  `;
+  document.getElementById('cal-stats').innerHTML =
+    `<div class="cal-stat"><div class="cal-stat-lbl">Měsíční P&amp;L</div><div class="cal-stat-val" style="color:${mPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(mPnl)}</div></div>` +
+    `<div class="cal-stat"><div class="cal-stat-lbl">Obchodů</div><div class="cal-stat-val">${mTrades.length}</div></div>` +
+    `<div class="cal-stat"><div class="cal-stat-lbl">Win Rate</div><div class="cal-stat-val">${mWR}</div></div>` +
+    `<div class="cal-stat"><div class="cal-stat-lbl">Obch. dny</div><div class="cal-stat-val">${mDays}</div></div>` +
+    `<div class="cal-stat"><div class="cal-stat-lbl">Profit. dny</div><div class="cal-stat-val" style="color:var(--green)">${mProfit}</div></div>`;
 
-  // ── Sestavení buněk ──
+  // ── Buňky ──
   const firstDay = new Date(calYear, calMonth, 1);
   const lastDay  = new Date(calYear, calMonth+1, 0);
-  const startDow = (firstDay.getDay()+6)%7; // Po=0 … Ne=6
+  const startDow = (firstDay.getDay()+6) % 7; // Po=0 … Ne=6
 
-  const dayCells = [];
-  for(let i=0; i<startDow; i++) dayCells.push({empty:true});
+  // Sestavíme pole řádků (každý řádek = 7 dní)
+  const cells = [];
+  for(let i=0; i<startDow; i++) cells.push(null); // prázdné před 1.
   for(let d=1; d<=lastDay.getDate(); d++) {
-    const dateStr   = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const dayTrades = byDay[dateStr] || [];
-    const dayPnl    = dayTrades.reduce((s,t)=>s+calcPnl(t),0);
-    const allStrats = [...new Set(dayTrades.flatMap(t=>t.strategy||[]))].slice(0,2);
-    dayCells.push({ d, dateStr, dayTrades, dayPnl, allStrats,
-      isToday:    dateStr===today,
-      isSelected: dateStr===calSelectedDay });
+    const ds = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const dt = byDay[ds] || [];
+    const pnl = dt.reduce((s,t)=>s+calcPnl(t), 0);
+    cells.push({ d, ds, dt, pnl, isToday:ds===today, isSel:ds===calSelectedDay });
   }
-  // Doplnit na násobek 7
-  while(dayCells.length % 7 !== 0) dayCells.push({empty:true});
+  while(cells.length % 7 !== 0) cells.push(null); // doplnit na násobek 7
 
-  // ── Sestavení HTML s weekly sum po každých 7 buňkách ──
+  // ── HTML ──
   let html = '';
-  for(let i=0; i<dayCells.length; i++) {
-    const c = dayCells[i];
-    if(c.empty) {
-      html += `<div class="cal-cell other-month"></div>`;
+  for(let i=0; i<cells.length; i++) {
+    const c = cells[i];
+    if(!c) {
+      html += `<div class="cal-cell empty"></div>`;
     } else {
-      const hasTrades = c.dayTrades.length > 0;
-      const cls = ['cal-cell',
-        hasTrades?'has-trades':'',
-        hasTrades?(c.dayPnl>=0?'profitable':'losing'):'',
-        c.isToday?'today':'',
-        c.isSelected?'selected':''
-      ].filter(Boolean).join(' ');
-      html += `<div class="${cls}" onclick="calSelectDay('${c.dateStr}')">
-        <div class="cal-num">${c.d}</div>
-        ${hasTrades?`
-          <div class="cal-pnl ${c.dayPnl>=0?'pos':'neg'}">${fmtPnl(c.dayPnl)}</div>
-          <div class="cal-cnt">${c.dayTrades.length} obchod${c.dayTrades.length>4?'ů':c.dayTrades.length>1?'y':''}</div>
-          ${c.allStrats.length?`<div class="cal-strats">${c.allStrats.map(s=>`<span class="cal-strat">${s}</span>`).join('')}</div>`:''}
-        `:''}
-      </div>`;
+      const has = c.dt.length > 0;
+      let cls = 'cal-cell';
+      if(has) cls += c.pnl >= 0 ? ' profitable' : ' losing';
+      if(c.isToday) cls += ' today';
+      if(c.isSel)   cls += ' selected';
+      const trCnt = c.dt.length;
+      const sfx   = trCnt === 1 ? '' : trCnt > 4 ? 'ů' : 'y';
+      html += `<div class="${cls}" onclick="calSelectDay('${c.ds}')">` +
+        `<div class="cal-day-num">${c.d}</div>` +
+        (has ? `<div class="cal-day-pnl ${c.pnl>=0?'pos':'neg'}">${fmtPnl(c.pnl)}</div>` +
+               `<div class="cal-day-cnt">${trCnt} obchod${sfx}</div>` : '') +
+        `</div>`;
     }
-    // Weekly sum po každých 7 buňkách
+    // Po každých 7 buňkách přidáme weekly sum jako 8. sloupec
     if((i+1) % 7 === 0) {
-      const weekCells = dayCells.slice(i-6, i+1).filter(c=>!c.empty);
-      const weekPnl   = weekCells.reduce((s,c)=>s+c.dayPnl,0);
-      const weekCount = weekCells.reduce((s,c)=>s+c.dayTrades.length,0);
-      if(weekCount > 0) {
-        html += `<div class="cal-week-sum">
-          <div class="wlbl">Týden</div>
-          <div class="wpnl ${weekPnl>=0?'pos':'neg'}">${fmtPnl(weekPnl)}</div>
-          <div class="wcnt">${weekCount} obch.</div>
-        </div>`;
-      } else {
-        html += `<div class="cal-week-sum"></div>`;
-      }
+      const wk    = cells.slice(i-6, i+1).filter(Boolean);
+      const wPnl  = wk.reduce((s,c)=>s+c.pnl, 0);
+      const wCnt  = wk.reduce((s,c)=>s+c.dt.length, 0);
+      html += `<div class="cal-week-sum">` +
+        (wCnt > 0
+          ? `<div class="wlbl">Týden</div><div class="wpnl ${wPnl>=0?'pos':'neg'}">${fmtPnl(wPnl)}</div><div class="wcnt">${wCnt} obch.</div>`
+          : '') +
+        `</div>`;
     }
   }
   document.getElementById('cal-grid').innerHTML = html;
 
-  // Zobraz panel vybraného dne
   if(calSelectedDay) renderCalDayPanel(calSelectedDay, byDay[calSelectedDay]||[]);
   else document.getElementById('cal-day-panel').innerHTML = '';
 }
@@ -1563,10 +1604,10 @@ function renderCalDayPanel(dateStr, dayTrades) {
   const dayPnl = dayTrades.reduce((s,t)=>s+calcPnl(t),0);
   const fmt = new Date(dateStr+'T12:00').toLocaleDateString('cs-CZ',{weekday:'long',day:'numeric',month:'long'});
   panel.innerHTML = `
-    <div class="cal-day-panel">
-      <div class="cal-day-title" style="display:flex;justify-content:space-between;align-items:center">
-        <span>${fmt}</span>
-        <span style="font-family:var(--display);font-size:16px;font-weight:700;color:${dayPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(dayPnl)}</span>
+    <div class="cal-day-detail">
+      <div class="cal-day-detail-hdr">
+        <span class="cal-day-detail-title">${fmt}</span>
+        <span class="cal-day-detail-pnl" style="color:${dayPnl>=0?'var(--green)':'var(--red)'}">${fmtPnl(dayPnl)}</span>
       </div>
       <div class="cards-grid">
         ${dayTrades.map(t => {
@@ -1596,6 +1637,166 @@ function renderCalDayPanel(dateStr, dayTrades) {
         }).join('')}
       </div>
     </div>`;
+}
+
+// ══════════════════════════════════════════
+// ── CHART GENERATOR (Polygon.io + Lightweight Charts) ──
+// ══════════════════════════════════════════
+const POLYGON_KEY = 'DZFDmFbmzZUfEkHtt8DuxXaBUDYUM6Ba';
+
+// Polygon.io ticker formát pro futures
+// MNQ → MNQM26 (aktuální front month), ale zkusíme nejdřív bez expirace
+function polygonTicker(symbol) {
+  // Polygon.io futures: použijeme kontinuální kontrakt nebo zkusíme přímý symbol
+  const map = {
+    'MNQ': 'MNQ', 'NQ': 'NQ', 'ES': 'ES', 'MES': 'MES',
+    'YM': 'YM', 'MYM': 'MYM', 'RTY': 'RTY',
+    'GC': 'GC', 'MGC': 'MGC', 'CL': 'CL', 'MCL': 'MCL',
+  };
+  return map[symbol] || symbol;
+}
+
+async function fetchPolygonCandles(symbol, entryDateStr, exitDateStr) {
+  // Čas vstupu a výstupu — buffer ±45 minut
+  const entryMs = new Date(entryDateStr).getTime();
+  const exitMs  = exitDateStr ? new Date(exitDateStr).getTime() : entryMs + 60*60*1000;
+  const fromMs  = entryMs - 45*60*1000;
+  const toMs    = exitMs  + 45*60*1000;
+
+  const fromDate = new Date(fromMs).toISOString().slice(0,10);
+  const toDate   = new Date(toMs).toISOString().slice(0,10);
+
+  const ticker = polygonTicker(symbol);
+  const url = `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/minute/${fromDate}/${toDate}`
+    + `?adjusted=false&sort=asc&limit=500&apiKey=${POLYGON_KEY}`;
+
+  const resp = await fetch(url);
+  const json = await resp.json();
+
+  if(json.status === 'ERROR' || json.error) throw new Error(json.error || json.message || 'API error');
+  if(!json.results || json.results.length === 0) throw new Error(`Žádná data pro ${ticker} (${fromDate})`);
+
+  // Filtrujeme jen svíčky v požadovaném okně
+  return json.results
+    .filter(r => r.t >= fromMs && r.t <= toMs)
+    .map(r => ({
+      time:  Math.floor(r.t / 1000),
+      open:  r.o, high: r.h, low: r.l, close: r.c
+    }));
+}
+
+async function generateTradeChart(trade, btnEl) {
+  if(btnEl) { btnEl.disabled = true; btnEl.textContent = '⟳ Načítám data…'; }
+
+  try {
+    const entryDate = trade.date || trade.ts || '';
+    const exitDate  = trade.exitDate || '';
+
+    if(!entryDate) throw new Error('Obchod nemá datum vstupu');
+
+    const candles = await fetchPolygonCandles(trade.symbol, entryDate, exitDate);
+    if(!candles.length) throw new Error('Polygon nevrátil žádná data');
+
+    if(btnEl) btnEl.textContent = '⟳ Renderuji…';
+
+    // Off-screen kontejner pro Lightweight Charts
+    const wrap = document.createElement('div');
+    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:480px;';
+    document.body.appendChild(wrap);
+
+    const chart = LightweightCharts.createChart(wrap, {
+      width: 900, height: 480,
+      layout: { background: { color: '#0e0e1a' }, textColor: '#8888a8' },
+      grid:   { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
+      rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
+      timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: false },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+    });
+
+    const series = chart.addCandlestickSeries({
+      upColor: '#05f593', downColor: '#ff4466',
+      borderUpColor: '#05f593', borderDownColor: '#ff4466',
+      wickUpColor: '#05f593', wickDownColor: '#ff4466',
+    });
+    series.setData(candles);
+
+    // Entry linka
+    series.createPriceLine({ price: parseFloat(trade.entry), color: '#05f593',
+      lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: `ENTRY (${trade.dir})` });
+    // Exit linka
+    const pnl = calcPnl(trade);
+    series.createPriceLine({ price: parseFloat(trade.exit), color: pnl >= 0 ? '#05f593' : '#ff4466',
+      lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `EXIT ${fmtPnl(pnl)}` });
+    // SL
+    if(trade.sl && parseFloat(trade.sl)) {
+      series.createPriceLine({ price: parseFloat(trade.sl), color: '#ff4466',
+        lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'SL' });
+    }
+    // TP
+    if(trade.tp && parseFloat(trade.tp)) {
+      series.createPriceLine({ price: parseFloat(trade.tp), color: '#4d8fff',
+        lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'TP' });
+    }
+
+    chart.timeScale().fitContent();
+    await new Promise(r => setTimeout(r, 400)); // počkáme na render
+
+    const canvas   = chart.takeScreenshot();
+    const imageUrl = canvas.toDataURL('image/png');
+
+    chart.remove();
+    document.body.removeChild(wrap);
+
+    // Uložit do obchodu
+    const updated = { ...trade, img: imageUrl };
+    delete updated._id;
+    await updateTrade(trade._id, updated);
+    const idx = trades.findIndex(t => t._id === trade._id);
+    if(idx >= 0) trades[idx] = { ...trades[idx], img: imageUrl };
+
+    if(btnEl) { btnEl.disabled = false; btnEl.textContent = '✓ Chart uložen'; btnEl.className = 'chart-gen-btn ok'; }
+    toast(`Chart pro ${trade.symbol} vygenerován!`, 'ok');
+    return imageUrl;
+
+  } catch(e) {
+    console.error('Chart gen:', e);
+    if(btnEl) { btnEl.disabled = false; btnEl.textContent = '⚠ ' + e.message; btnEl.className = 'chart-gen-btn err'; }
+    toast('Chart gen chyba: ' + e.message, 'err');
+    return null;
+  }
+}
+
+// Generovat chart z edit modalu pro aktuálně editovaný obchod
+async function genChartFromModal() {
+  if(!editingId) return;
+  const trade = trades.find(t => t._id === editingId);
+  if(!trade) return;
+  const btn = document.getElementById('modal-chart-btn');
+  await generateTradeChart(trade, btn);
+  // Aktualizuj preview v modalu pokud se chart načetl
+  const updated = trades.find(t => t._id === editingId);
+  if(updated && updated.img) {
+    document.getElementById('e-chart-url').value = '';
+    document.getElementById('e-img-preview-src').src = updated.img;
+    document.getElementById('e-img-preview').style.display = 'block';
+  }
+}
+
+// Hromadné generování — pro všechny obchody bez chartu
+async function generateAllCharts(list, progressEl, barEl) {
+  let done = 0;
+  const total = list.length;
+  for(const trade of list) {
+    if(progressEl) progressEl.textContent = `${done}/${total} — ${trade.symbol} ${trade.date||''}`;
+    if(barEl)      barEl.style.width = (done/total*100)+'%';
+    await generateTradeChart(trade, null);
+    done++;
+    // Rate limit: Polygon free tier = 5 req/min → 12 s mezi dotazy
+    if(done < total) await new Promise(r => setTimeout(r, 12500));
+  }
+  if(progressEl) progressEl.textContent = `✓ Hotovo — ${total} chartů vygenerováno`;
+  if(barEl)      barEl.style.width = '100%';
+  toast(`Všechny charty vygenerovány (${total})`, 'ok');
 }
 
 // ── INIT ──
