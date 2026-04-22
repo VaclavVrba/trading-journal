@@ -279,6 +279,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
   .grid2,.fgrid,.fgrid.c3,.fgrid.c4{grid-template-columns:1fr;}
   .jcard-body.open{grid-template-columns:1fr;}
 }
+/* ── SETTINGS MODAL ── */
+.settings-modal{background:var(--bg2);border:1px solid var(--border2);border-radius:var(--rxl);padding:28px 32px;width:420px;max-width:95vw;}
+.settings-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.settings-badge{font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px;border:1px solid;}
+.settings-badge.ok{color:var(--green);border-color:rgba(5,245,147,.3);background:var(--gdim);}
+.settings-badge.fail{color:var(--red);border-color:rgba(255,68,102,.3);background:var(--rdim);}
 /* ── CHART GEN ── */
 .chart-gen-btn{display:inline-flex;align-items:center;gap:7px;padding:7px 14px;border-radius:var(--r);font-size:12px;font-family:var(--mono);border:1px solid rgba(77,143,255,.35);background:var(--bdim);color:var(--blue);cursor:pointer;transition:all .15s;}
 .chart-gen-btn:hover{background:rgba(77,143,255,.18);}
@@ -309,6 +315,10 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
   </div>
   <div class="sidebar-bottom">
     <div class="db-status"><div class="db-dot off" id="db-dot"></div><span class="db-txt" id="db-txt">connecting</span></div>
+    <div style="margin-top:10px;display:flex;align-items:center;justify-content:space-between;">
+      <span style="font-size:10px;color:var(--text3);font-family:var(--mono)" id="tv-status-txt">Tradovate: —</span>
+      <button onclick="openSettings()" style="background:none;border:1px solid var(--border2);border-radius:5px;color:var(--text3);cursor:pointer;padding:3px 8px;font-size:11px;" title="Nastavení Tradovate">⚙</button>
+    </div>
   </div>
 </nav>
 <!-- SYMBOL DATALIST -->
@@ -631,6 +641,35 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{filter:invert(.3
       <button class="btn btn-primary" onclick="saveEdit()">Uložit změny</button>
       <button class="chart-gen-btn" id="modal-chart-btn" onclick="genChartFromModal()">📊 Generovat chart z Polygon.io</button>
       <button class="btn btn-ghost" onclick="closeEditModal()">Zrušit</button>
+    </div>
+  </div>
+</div>
+<!-- SETTINGS MODAL -->
+<div class="modal-overlay" id="settings-modal">
+  <div class="settings-modal">
+    <div class="modal-title" style="margin-bottom:20px">⚙ Nastavení — Tradovate API</div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Username (email)</label>
+      <input type="text" id="s-username" placeholder="vas@email.com" autocomplete="username"/>
+    </div>
+    <div class="fg" style="margin-bottom:12px">
+      <label>Heslo</label>
+      <input type="password" id="s-password" placeholder="••••••••" autocomplete="current-password"/>
+    </div>
+    <div class="fg" style="margin-bottom:20px">
+      <label>Prostředí</label>
+      <select id="s-env">
+        <option value="live">Live (Alpha Futures / Apex)</option>
+        <option value="demo">Demo</option>
+      </select>
+    </div>
+    <div class="settings-row" id="s-status-row" style="display:none">
+      <span class="settings-badge" id="s-badge"></span>
+      <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="s-msg"></span>
+    </div>
+    <div class="btn-row" style="margin-top:4px">
+      <button class="btn btn-primary" onclick="testAndSaveSettings()">Uložit &amp; Otestovat připojení</button>
+      <button class="btn btn-ghost" onclick="closeSettings()">Zavřít</button>
     </div>
   </div>
 </div>
@@ -1640,131 +1679,156 @@ function renderCalDayPanel(dateStr, dayTrades) {
 }
 
 // ══════════════════════════════════════════
-// ── CHART GENERATOR (Polygon.io + Lightweight Charts) ──
+// ── CHART GENERATOR (Yahoo Finance + Lightweight Charts) ──
 // ══════════════════════════════════════════
-const POLYGON_KEY = 'DZFDmFbmzZUfEkHtt8DuxXaBUDYUM6Ba';
 
-// Polygon.io ticker formát pro futures
-// MNQ → MNQM26 (aktuální front month), ale zkusíme nejdřív bez expirace
-function polygonTicker(symbol) {
-  // Polygon.io futures: použijeme kontinuální kontrakt nebo zkusíme přímý symbol
-  const map = {
-    'MNQ': 'MNQ', 'NQ': 'NQ', 'ES': 'ES', 'MES': 'MES',
-    'YM': 'YM', 'MYM': 'MYM', 'RTY': 'RTY',
-    'GC': 'GC', 'MGC': 'MGC', 'CL': 'CL', 'MCL': 'MCL',
-  };
-  return map[symbol] || symbol;
+// Yahoo Finance ticker pro futures (=F suffix)
+function yahooTicker(symbol) {
+  const futures = ['MNQ','NQ','ES','MES','YM','MYM','RTY','GC','MGC','CL','MCL','SI','ZB','ZN'];
+  if(futures.includes(symbol.toUpperCase())) return symbol.toUpperCase() + '=F';
+  return symbol.toUpperCase();
 }
 
-async function fetchPolygonCandles(symbol, entryDateStr, exitDateStr) {
-  // Čas vstupu a výstupu — buffer ±45 minut
-  const entryMs = new Date(entryDateStr).getTime();
-  const exitMs  = exitDateStr ? new Date(exitDateStr).getTime() : entryMs + 60*60*1000;
-  const fromMs  = entryMs - 45*60*1000;
-  const toMs    = exitMs  + 45*60*1000;
+// Fallback: micro → standard kontrakt
+function yahooTickerFallback(symbol) {
+  const fb = { 'MNQ':'NQ=F','MES':'ES=F','MYM':'YM=F','MGC':'GC=F','MCL':'CL=F' };
+  return fb[symbol.toUpperCase()] || null;
+}
 
-  const fromDate = new Date(fromMs).toISOString().slice(0,10);
-  const toDate   = new Date(toMs).toISOString().slice(0,10);
+// Interval podle stáří obchodu
+function pickInterval(entryDateStr) {
+  const days = (Date.now() - new Date(entryDateStr).getTime()) / 86400000;
+  if(days <= 6)  return '1m';
+  if(days <= 59) return '5m';
+  return '60m';
+}
 
-  const ticker = polygonTicker(symbol);
-  const url = `https://api.polygon.io/v2/aggs/ticker/${ticker}/range/1/minute/${fromDate}/${toDate}`
-    + `?adjusted=false&sort=asc&limit=500&apiKey=${POLYGON_KEY}`;
-
-  const resp = await fetch(url);
+async function fetchYahooCandles(ticker, period1, period2, interval) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}`
+    + `?interval=${interval}&period1=${period1}&period2=${period2}&includePrePost=true`;
+  let resp;
+  try {
+    resp = await fetch(url, { headers:{ 'Accept':'application/json' } });
+  } catch(e) {
+    resp = await fetch('https://corsproxy.io/?' + encodeURIComponent(url));
+  }
+  if(!resp.ok) throw new Error('HTTP ' + resp.status);
   const json = await resp.json();
-
-  if(json.status === 'ERROR' || json.error) throw new Error(json.error || json.message || 'API error');
-  if(!json.results || json.results.length === 0) throw new Error(`Žádná data pro ${ticker} (${fromDate})`);
-
-  // Filtrujeme jen svíčky v požadovaném okně
-  return json.results
-    .filter(r => r.t >= fromMs && r.t <= toMs)
-    .map(r => ({
-      time:  Math.floor(r.t / 1000),
-      open:  r.o, high: r.h, low: r.l, close: r.c
-    }));
+  const result = json.chart && json.chart.result && json.chart.result[0];
+  if(!result) {
+    const err = json.chart && json.chart.error;
+    throw new Error((err && err.description) || ('Zadna data pro ' + ticker));
+  }
+  const ts    = result.timestamp || [];
+  const quote = (result.indicators && result.indicators.quote && result.indicators.quote[0]) || {};
+  return ts.map((t,i) => ({
+    time:  t,
+    open:  quote.open  && quote.open[i],
+    high:  quote.high  && quote.high[i],
+    low:   quote.low   && quote.low[i],
+    close: quote.close && quote.close[i],
+  })).filter(c => c.open != null && c.close != null);
 }
 
 async function generateTradeChart(trade, btnEl) {
-  if(btnEl) { btnEl.disabled = true; btnEl.textContent = '⟳ Načítám data…'; }
-
+  if(btnEl) { btnEl.disabled = true; btnEl.textContent = '⟳ Nacitam data...'; }
   try {
     const entryDate = trade.date || trade.ts || '';
     const exitDate  = trade.exitDate || '';
+    if(!entryDate) throw new Error('Obchod nema datum vstupu');
 
-    if(!entryDate) throw new Error('Obchod nemá datum vstupu');
+    const entryMs = new Date(entryDate).getTime();
+    const exitMs  = exitDate ? new Date(exitDate).getTime() : entryMs + 60*60*1000;
+    const period1  = Math.floor((entryMs - 75*60*1000) / 1000);
+    const period2  = Math.floor((exitMs  + 75*60*1000) / 1000);
+    const interval = pickInterval(entryDate);
 
-    const candles = await fetchPolygonCandles(trade.symbol, entryDate, exitDate);
-    if(!candles.length) throw new Error('Polygon nevrátil žádná data');
+    let candles = null, usedTicker = yahooTicker(trade.symbol);
+    try {
+      candles = await fetchYahooCandles(usedTicker, period1, period2, interval);
+    } catch(e) {
+      const fb = yahooTickerFallback(trade.symbol);
+      if(fb) { usedTicker = fb; candles = await fetchYahooCandles(fb, period1, period2, interval); }
+      else throw e;
+    }
+    if(!candles || !candles.length) throw new Error('Zadne svicky pro ' + usedTicker);
+    if(btnEl) btnEl.textContent = '⟳ Renderuji...';
 
-    if(btnEl) btnEl.textContent = '⟳ Renderuji…';
-
-    // Off-screen kontejner pro Lightweight Charts
+    // Off-screen chart kontejner
     const wrap = document.createElement('div');
-    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:900px;height:480px;';
+    wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:1000px;height:520px;background:#0e0e1a;';
     document.body.appendChild(wrap);
 
     const chart = LightweightCharts.createChart(wrap, {
-      width: 900, height: 480,
-      layout: { background: { color: '#0e0e1a' }, textColor: '#8888a8' },
-      grid:   { vertLines: { color: 'rgba(255,255,255,0.04)' }, horzLines: { color: 'rgba(255,255,255,0.04)' } },
-      rightPriceScale: { borderColor: 'rgba(255,255,255,0.08)' },
-      timeScale: { borderColor: 'rgba(255,255,255,0.08)', timeVisible: true, secondsVisible: false },
-      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      width: 1000, height: 520,
+      layout: { background:{ color:'#0e0e1a' }, textColor:'#8888a8', fontSize:11 },
+      grid:   { vertLines:{ color:'rgba(255,255,255,0.04)' }, horzLines:{ color:'rgba(255,255,255,0.04)' } },
+      rightPriceScale: { borderColor:'rgba(255,255,255,0.08)', scaleMargins:{ top:0.12, bottom:0.08 } },
+      timeScale: { borderColor:'rgba(255,255,255,0.08)', timeVisible:true, secondsVisible:false },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
+      watermark: { visible:true, fontSize:48, horzAlign:'center', vertAlign:'center',
+                   color:'rgba(255,255,255,0.03)', text: trade.symbol + ' · ' + trade.dir },
     });
 
     const series = chart.addCandlestickSeries({
-      upColor: '#05f593', downColor: '#ff4466',
-      borderUpColor: '#05f593', borderDownColor: '#ff4466',
-      wickUpColor: '#05f593', wickDownColor: '#ff4466',
+      upColor:'#26a69a', downColor:'#ef5350',
+      borderUpColor:'#26a69a', borderDownColor:'#ef5350',
+      wickUpColor:'#26a69a', wickDownColor:'#ef5350',
     });
     series.setData(candles);
 
-    // Entry linka
-    series.createPriceLine({ price: parseFloat(trade.entry), color: '#05f593',
-      lineWidth: 2, lineStyle: 0, axisLabelVisible: true, title: `ENTRY (${trade.dir})` });
-    // Exit linka
-    const pnl = calcPnl(trade);
-    series.createPriceLine({ price: parseFloat(trade.exit), color: pnl >= 0 ? '#05f593' : '#ff4466',
-      lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: `EXIT ${fmtPnl(pnl)}` });
-    // SL
-    if(trade.sl && parseFloat(trade.sl)) {
-      series.createPriceLine({ price: parseFloat(trade.sl), color: '#ff4466',
-        lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'SL' });
-    }
-    // TP
-    if(trade.tp && parseFloat(trade.tp)) {
-      series.createPriceLine({ price: parseFloat(trade.tp), color: '#4d8fff',
-        lineWidth: 1, lineStyle: 1, axisLabelVisible: true, title: 'TP' });
-    }
+    const findTs = ms => candles.reduce((b,c) =>
+      Math.abs(c.time*1000-ms) < Math.abs(b.time*1000-ms) ? c : b).time;
+    const entryTs = findTs(entryMs);
+    const exitTs  = findTs(exitMs);
+    const pnl     = calcPnl(trade);
+    const isLong  = trade.dir === 'LONG';
+
+    series.setMarkers([
+      { time:entryTs, position: isLong?'belowBar':'aboveBar', color:'#05f593',
+        shape: isLong?'arrowUp':'arrowDown', text:'Entry  '+trade.entry, size:2 },
+      { time:exitTs,  position: isLong?'aboveBar':'belowBar',
+        color: pnl>=0?'#05f593':'#ff4466',
+        shape: isLong?'arrowDown':'arrowUp', text:'Exit  '+fmtPnl(pnl), size:2 },
+    ].sort((a,b) => a.time - b.time));
+
+    series.createPriceLine({ price:parseFloat(trade.entry), color:'rgba(5,245,147,0.55)',
+      lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Entry' });
+    series.createPriceLine({ price:parseFloat(trade.exit), color: pnl>=0?'rgba(5,245,147,0.55)':'rgba(255,68,102,0.55)',
+      lineWidth:1, lineStyle:2, axisLabelVisible:true, title:'Exit' });
+    if(trade.sl && parseFloat(trade.sl))
+      series.createPriceLine({ price:parseFloat(trade.sl), color:'rgba(255,68,102,0.45)',
+        lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'SL' });
+    if(trade.tp && parseFloat(trade.tp))
+      series.createPriceLine({ price:parseFloat(trade.tp), color:'rgba(77,143,255,0.45)',
+        lineWidth:1, lineStyle:1, axisLabelVisible:true, title:'TP' });
 
     chart.timeScale().fitContent();
-    await new Promise(r => setTimeout(r, 400)); // počkáme na render
+    await new Promise(r => setTimeout(r, 600));
 
     const canvas   = chart.takeScreenshot();
     const imageUrl = canvas.toDataURL('image/png');
-
     chart.remove();
     document.body.removeChild(wrap);
 
-    // Uložit do obchodu
     const updated = { ...trade, img: imageUrl };
     delete updated._id;
     await updateTrade(trade._id, updated);
     const idx = trades.findIndex(t => t._id === trade._id);
     if(idx >= 0) trades[idx] = { ...trades[idx], img: imageUrl };
 
-    if(btnEl) { btnEl.disabled = false; btnEl.textContent = '✓ Chart uložen'; btnEl.className = 'chart-gen-btn ok'; }
-    toast(`Chart pro ${trade.symbol} vygenerován!`, 'ok');
+    if(btnEl) { btnEl.disabled=false; btnEl.textContent='✓ Chart ulozen'; btnEl.className='chart-gen-btn ok'; }
+    toast('Chart ' + trade.symbol + ' vygenerovan! (' + interval + ' / ' + usedTicker + ')', 'ok');
     return imageUrl;
 
   } catch(e) {
     console.error('Chart gen:', e);
-    if(btnEl) { btnEl.disabled = false; btnEl.textContent = '⚠ ' + e.message; btnEl.className = 'chart-gen-btn err'; }
-    toast('Chart gen chyba: ' + e.message, 'err');
+    if(btnEl) { btnEl.disabled=false; btnEl.textContent='⚠ '+e.message; btnEl.className='chart-gen-btn err'; }
+    toast('Chart chyba: '+e.message, 'err');
     return null;
   }
 }
+
 
 // Generovat chart z edit modalu pro aktuálně editovaný obchod
 async function genChartFromModal() {
